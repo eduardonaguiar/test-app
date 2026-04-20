@@ -27,27 +27,56 @@ Estrutura inicial do monorepo para uma aplicação local-first de simulados.
 - pnpm 10+
 - .NET 8 SDK
 - Docker + Docker Compose (opcional)
+- `dotnet-ef` instalado para o script `db:migrate`
 
-## Comandos de raiz
+## Scripts padronizados (raiz)
+
+Os scripts principais do monorepo foram padronizados para um fluxo previsível:
 
 ```bash
-pnpm install
 pnpm dev
 pnpm build
-pnpm test
 pnpm lint
+pnpm test
 pnpm typecheck
-pnpm api:build
-pnpm api:test
 pnpm compose:up
 pnpm compose:down
-pnpm contracts:generate
-pnpm api:seed
+pnpm db:migrate
+pnpm db:seed
 ```
 
-> Nesta etapa os pacotes possuem scripts placeholder para validar o setup do workspace.
+### O que cada script faz
 
-- `pnpm api:seed` -> importa automaticamente `contracts/exam-schema/examples/exam-basico-curto.json` para o SQLite local (quando o banco ainda está vazio).
+- `pnpm dev`
+  - Sobe o frontend (`dev:web`) e backend (`dev:api`) em modo desenvolvimento.
+- `pnpm build`
+  - Executa build dos pacotes JS/TS e build da solução .NET.
+- `pnpm lint`
+  - Executa lint dos pacotes JS/TS e valida formatação C# via `dotnet format --verify-no-changes`.
+- `pnpm test`
+  - Executa testes JS/TS e testes backend (.NET).
+- `pnpm typecheck`
+  - Executa typecheck JS/TS e valida compilação .NET sem restore.
+- `pnpm compose:up`
+  - Sobe ambiente local com Docker Compose.
+- `pnpm compose:down`
+  - Derruba o ambiente Docker Compose.
+- `pnpm db:migrate`
+  - Aplica migrations do EF Core no banco SQLite local.
+- `pnpm db:seed`
+  - Importa o exemplo `contracts/exam-schema/examples/exam-basico-curto.json` para o banco local (quando vazio).
+
+## Scripts de suporte
+
+```bash
+pnpm api:openapi
+pnpm web:api:generate
+pnpm contracts:generate
+```
+
+- `pnpm api:openapi`: exporta OpenAPI da API para `contracts/openapi/exam-runner.openapi.json`.
+- `pnpm web:api:generate`: gera client/tipos para o frontend.
+- `pnpm contracts:generate`: executa export + geração em sequência.
 
 ## Docker Compose (desenvolvimento)
 
@@ -96,15 +125,7 @@ Ou via script:
 
 ```bash
 pnpm compose:down
-pnpm contracts:generate
 ```
-
-## Objetivo desta etapa (Task 0.1)
-
-- [x] workspace funcional
-- [x] install na raiz funcionando
-- [x] estrutura inicial criada
-- [x] README inicial criado
 
 ## Contratos HTTP compartilhados (OpenAPI -> frontend)
 
