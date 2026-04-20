@@ -98,12 +98,24 @@ partial class ExamRunnerDbContextModelSnapshot : ModelSnapshot
             b.Property<bool>("Passed")
                 .HasColumnType("INTEGER");
 
+            b.Property<string>("QuestionReviewsJson")
+                .IsRequired()
+                .ValueGeneratedOnAdd()
+                .HasColumnType("TEXT")
+                .HasDefaultValue("[]");
+
             b.Property<decimal>("ScorePercentage")
                 .HasPrecision(5, 2)
                 .HasColumnType("TEXT");
 
             b.Property<int>("TotalQuestions")
                 .HasColumnType("INTEGER");
+
+            b.Property<string>("TopicAnalysisJson")
+                .IsRequired()
+                .ValueGeneratedOnAdd()
+                .HasColumnType("TEXT")
+                .HasDefaultValue("[]");
 
             b.Property<int>("UnansweredQuestions")
                 .HasColumnType("INTEGER");

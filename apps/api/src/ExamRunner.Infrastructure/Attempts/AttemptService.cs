@@ -1,6 +1,7 @@
 using ExamRunner.Infrastructure.Data;
 using ExamRunner.Infrastructure.Data.Entities;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace ExamRunner.Infrastructure.Attempts;
 
@@ -9,6 +10,8 @@ public sealed class AttemptService(
     TimeProvider timeProvider,
     IAttemptScoringService? attemptScoringService = null) : IAttemptService
 {
+    private static readonly JsonSerializerOptions ResultSerializationOptions = new(JsonSerializerDefaults.Web);
+
     public async Task<IReadOnlyList<AttemptHistoryItemSnapshot>> GetHistoryAsync(CancellationToken cancellationToken = default)
     {
         var attempts = await dbContext.Attempts
@@ -119,57 +122,18 @@ public sealed class AttemptService(
             throw new InvalidOperationException("Result is available only after submission.");
         }
 
-        var questions = attempt.Exam.Sections
-            .SelectMany(section => section.Questions)
-            .Select(question => new ObjectiveQuestionForScoring(
-                question.Id,
-                question.Topic,
-                question.Options.Single(option => option.IsCorrect).Id,
-                question.Weight))
-            .ToArray();
+        var questionReviews = DeserializePersistedQuestionReviews(attempt.Result.QuestionReviewsJson);
+        var topicAnalysis = DeserializePersistedTopicAnalysis(attempt.Result.TopicAnalysisJson);
 
-        var answers = attempt.Answers
-            .Select(answer => new ObjectiveAnswerForScoring(answer.QuestionId, answer.SelectedOptionId))
-            .ToArray();
+        if (questionReviews.Count == 0)
+        {
+            questionReviews = BuildQuestionReviews(attempt);
+        }
 
-        var topicAnalysis = (attemptScoringService ?? new ObjectiveAttemptScoringService())
-            .ScoreObjectiveAttempt(questions, answers, attempt.Exam.PassingScorePercentage)
-            .TopicBreakdown;
-
-        var selectedOptionsByQuestionId = attempt.Answers
-            .GroupBy(answer => answer.QuestionId)
-            .ToDictionary(group => group.Key, group => group.OrderByDescending(answer => answer.UpdatedAtUtc).First().SelectedOptionId);
-
-        var questionReviews = attempt.Exam.Sections
-            .OrderBy(section => section.DisplayOrder)
-            .SelectMany(section => section.Questions
-                .OrderBy(question => question.DisplayOrder)
-                .Select(question =>
-                {
-                    selectedOptionsByQuestionId.TryGetValue(question.Id, out var selectedOptionId);
-
-                    var correctOption = question.Options.Single(option => option.IsCorrect);
-                    var userOption = selectedOptionId.HasValue
-                        ? question.Options.SingleOrDefault(option => option.Id == selectedOptionId.Value)
-                        : null;
-
-                    return new AttemptResultQuestionReviewSnapshot(
-                        question.Id,
-                        section.Id,
-                        section.Title,
-                        question.QuestionCode,
-                        question.Prompt,
-                        userOption?.Id,
-                        userOption?.OptionCode,
-                        userOption?.Text,
-                        correctOption.Id,
-                        correctOption.OptionCode,
-                        correctOption.Text,
-                        userOption?.Id == correctOption.Id,
-                        question.ExplanationSummary,
-                        question.ExplanationDetails);
-                }))
-            .ToArray();
+        if (topicAnalysis.Count == 0)
+        {
+            topicAnalysis = BuildTopicAnalysis(attempt, attemptScoringService ?? new ObjectiveAttemptScoringService());
+        }
 
         return new AttemptResultSnapshot(
             attempt.Id,
@@ -338,11 +302,18 @@ public sealed class AttemptService(
         attempt.SubmittedAtUtc = now;
         attempt.LastSeenAtUtc = now;
 
-        var scoredResult = BuildScoredResult(attempt, now, attemptScoringService ?? new ObjectiveAttemptScoringService());
+        var scoringService = attemptScoringService ?? new ObjectiveAttemptScoringService();
+        var scoredResult = BuildScoredResult(attempt, now, scoringService);
+        var questionReviews = BuildQuestionReviews(attempt);
+        var topicAnalysis = BuildTopicAnalysis(attempt, scoringService);
+        var questionReviewsJson = JsonSerializer.Serialize(questionReviews, ResultSerializationOptions);
+        var topicAnalysisJson = JsonSerializer.Serialize(topicAnalysis, ResultSerializationOptions);
 
         if (attempt.Result is null)
         {
             attempt.Result = scoredResult;
+            attempt.Result.QuestionReviewsJson = questionReviewsJson;
+            attempt.Result.TopicAnalysisJson = topicAnalysisJson;
         }
         else
         {
@@ -353,6 +324,8 @@ public sealed class AttemptService(
             attempt.Result.ScorePercentage = scoredResult.ScorePercentage;
             attempt.Result.Passed = scoredResult.Passed;
             attempt.Result.EvaluatedAtUtc = scoredResult.EvaluatedAtUtc;
+            attempt.Result.QuestionReviewsJson = questionReviewsJson;
+            attempt.Result.TopicAnalysisJson = topicAnalysisJson;
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -415,6 +388,7 @@ public sealed class AttemptService(
 
         return await query
             .Include(x => x.Answers)
+            .Include(x => x.Result)
             .Include(x => x.ReconnectEvents)
             .Include(x => x.Exam)
                 .ThenInclude(x => x.Sections)
@@ -495,5 +469,87 @@ public sealed class AttemptService(
             answeredQuestionCount,
             pendingQuestionCount,
             questions);
+    }
+
+    private static IReadOnlyList<AttemptResultQuestionReviewSnapshot> BuildQuestionReviews(AttemptEntity attempt)
+    {
+        var selectedOptionsByQuestionId = attempt.Answers
+            .GroupBy(answer => answer.QuestionId)
+            .ToDictionary(group => group.Key, group => group.OrderByDescending(answer => answer.UpdatedAtUtc).First().SelectedOptionId);
+
+        return attempt.Exam.Sections
+            .OrderBy(section => section.DisplayOrder)
+            .SelectMany(section => section.Questions
+                .OrderBy(question => question.DisplayOrder)
+                .Select(question =>
+                {
+                    selectedOptionsByQuestionId.TryGetValue(question.Id, out var selectedOptionId);
+
+                    var correctOption = question.Options.Single(option => option.IsCorrect);
+                    var userOption = selectedOptionId.HasValue
+                        ? question.Options.SingleOrDefault(option => option.Id == selectedOptionId.Value)
+                        : null;
+
+                    return new AttemptResultQuestionReviewSnapshot(
+                        question.Id,
+                        section.Id,
+                        section.Title,
+                        question.QuestionCode,
+                        question.Prompt,
+                        userOption?.Id,
+                        userOption?.OptionCode,
+                        userOption?.Text,
+                        correctOption.Id,
+                        correctOption.OptionCode,
+                        correctOption.Text,
+                        userOption?.Id == correctOption.Id,
+                        question.ExplanationSummary,
+                        question.ExplanationDetails);
+                }))
+            .ToArray();
+    }
+
+    private static IReadOnlyList<TopicScoreBreakdown> BuildTopicAnalysis(
+        AttemptEntity attempt,
+        IAttemptScoringService scoringService)
+    {
+        var questions = attempt.Exam.Sections
+            .SelectMany(section => section.Questions)
+            .Select(question => new ObjectiveQuestionForScoring(
+                question.Id,
+                question.Topic,
+                question.Options.Single(option => option.IsCorrect).Id,
+                question.Weight))
+            .ToArray();
+
+        var answers = attempt.Answers
+            .Select(answer => new ObjectiveAnswerForScoring(answer.QuestionId, answer.SelectedOptionId))
+            .ToArray();
+
+        return scoringService
+            .ScoreObjectiveAttempt(questions, answers, attempt.Exam.PassingScorePercentage)
+            .TopicBreakdown;
+    }
+
+    private static IReadOnlyList<AttemptResultQuestionReviewSnapshot> DeserializePersistedQuestionReviews(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return [];
+        }
+
+        return JsonSerializer.Deserialize<IReadOnlyList<AttemptResultQuestionReviewSnapshot>>(value, ResultSerializationOptions)
+            ?? [];
+    }
+
+    private static IReadOnlyList<TopicScoreBreakdown> DeserializePersistedTopicAnalysis(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return [];
+        }
+
+        return JsonSerializer.Deserialize<IReadOnlyList<TopicScoreBreakdown>>(value, ResultSerializationOptions)
+            ?? [];
     }
 }

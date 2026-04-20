@@ -11,6 +11,8 @@ public sealed class AttemptResultEntity
     public decimal ScorePercentage { get; set; }
     public bool Passed { get; set; }
     public DateTimeOffset EvaluatedAtUtc { get; set; }
+    public string QuestionReviewsJson { get; set; } = "[]";
+    public string TopicAnalysisJson { get; set; } = "[]";
 
     public AttemptEntity Attempt { get; set; } = null!;
 }
