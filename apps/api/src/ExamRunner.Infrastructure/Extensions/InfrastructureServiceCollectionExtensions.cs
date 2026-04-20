@@ -1,4 +1,5 @@
 using ExamRunner.Infrastructure.Data;
+using ExamRunner.Infrastructure.Import;
 using ExamRunner.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -21,6 +22,7 @@ public static class InfrastructureServiceCollectionExtensions
                 sqlite.MigrationsAssembly(typeof(ExamRunnerDbContext).Assembly.FullName)));
 
         services.AddScoped<IExamReadRepository, ExamReadRepository>();
+        services.AddScoped<IExamImportService, ExamImportService>();
 
         return services;
     }
