@@ -9,8 +9,10 @@
     "test": "pnpm -r --if-present test",
     "lint": "pnpm -r --if-present lint",
     "typecheck": "pnpm -r --if-present typecheck",
-    "api:build": "dotnet build apps/api",
-    "api:test": "dotnet test apps/api",
+    "api:dev": "dotnet watch --project apps/api/src/ExamRunner.Api run",
+    "api:build": "dotnet build apps/api/ExamRunner.sln",
+    "api:test": "dotnet test apps/api/ExamRunner.sln",
+    "api:lint": "dotnet format apps/api/ExamRunner.sln --verify-no-changes",
     "compose:up": "docker compose -f infra/docker/docker-compose.yml up --build",
     "compose:down": "docker compose -f infra/docker/docker-compose.yml down"
   }
