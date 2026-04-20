@@ -22,6 +22,12 @@ public static class InfrastructureServiceCollectionExtensions
                 sqlite.MigrationsAssembly(typeof(ExamRunnerDbContext).Assembly.FullName)));
 
         services.AddScoped<IExamReadRepository, ExamReadRepository>();
+
+        services.AddScoped<IOfficialExamSchemaValidator, OfficialExamSchemaValidator>();
+        services.AddScoped<IExamImportPayloadParser, ExamImportPayloadParser>();
+        services.AddScoped<IExamImportPayloadConsistencyValidator, ExamImportPayloadConsistencyValidator>();
+        services.AddScoped<IExamImportEntityMapper, ExamImportEntityMapper>();
+        services.AddScoped<IExamImportPersistence, ExamImportPersistence>();
         services.AddScoped<IExamImportService, ExamImportService>();
 
         return services;
