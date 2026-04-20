@@ -13,6 +13,19 @@ public sealed record AttemptResponse(
     DateTimeOffset LastSeenAt,
     DateTimeOffset? SubmittedAt);
 
+public sealed record AttemptHistoryResponse(
+    IReadOnlyList<AttemptHistoryItemResponse> Items);
+
+public sealed record AttemptHistoryItemResponse(
+    Guid AttemptId,
+    Guid ExamId,
+    string ExamTitle,
+    DateTimeOffset AttemptedAt,
+    int? Score,
+    decimal? Percentage,
+    int TimeSpentSeconds,
+    string Status);
+
 public sealed record AttemptExecutionStateResponse(
     Guid AttemptId,
     Guid ExamId,

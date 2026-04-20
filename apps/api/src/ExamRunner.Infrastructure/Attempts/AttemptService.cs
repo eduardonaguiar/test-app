@@ -9,6 +9,36 @@ public sealed class AttemptService(
     TimeProvider timeProvider,
     IAttemptScoringService? attemptScoringService = null) : IAttemptService
 {
+    public async Task<IReadOnlyList<AttemptHistoryItemSnapshot>> GetHistoryAsync(CancellationToken cancellationToken = default)
+    {
+        var attempts = await dbContext.Attempts
+            .Include(x => x.Exam)
+            .Include(x => x.Result)
+            .Where(x => x.Status != AttemptStatuses.InProgress)
+            .OrderByDescending(x => x.SubmittedAtUtc ?? x.StartedAtUtc)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        return attempts
+            .Select(attempt =>
+            {
+                var effectiveEndAt = attempt.SubmittedAtUtc ?? attempt.LastSeenAtUtc;
+                var clampedEndAt = effectiveEndAt < attempt.StartedAtUtc ? attempt.StartedAtUtc : effectiveEndAt;
+                var timeSpentSeconds = (int)Math.Max(0, Math.Floor((clampedEndAt - attempt.StartedAtUtc).TotalSeconds));
+
+                return new AttemptHistoryItemSnapshot(
+                    attempt.Id,
+                    attempt.ExamId,
+                    attempt.Exam.Title,
+                    attempt.SubmittedAtUtc ?? attempt.StartedAtUtc,
+                    attempt.Result?.CorrectAnswers,
+                    attempt.Result?.ScorePercentage,
+                    timeSpentSeconds,
+                    attempt.Status);
+            })
+            .ToArray();
+    }
+
     public async Task<AttemptSnapshot> CreateAsync(CreateAttemptCommand command, CancellationToken cancellationToken = default)
     {
         var exam = await dbContext.Exams
