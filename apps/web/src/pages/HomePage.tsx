@@ -1,37 +1,39 @@
 import { useEffect, useState } from 'react';
+import { getHealth, listExams } from '../generated/api-contract';
 
-type HealthStatus = {
-  status: string;
+type DashboardState = {
+  healthStatus: string;
   checkedAt: string;
+  examCount: number;
 };
 
 export function HomePage() {
-  const [healthStatus, setHealthStatus] = useState<HealthStatus | null>(null);
+  const [state, setState] = useState<DashboardState | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
 
-    async function loadHealthStatus() {
-      try {
-        const response = await fetch('/health', { signal: controller.signal });
+    async function loadDashboard() {
+      const [healthResult, examsResult] = await Promise.all([
+        getHealth(controller.signal),
+        listExams(controller.signal),
+      ]);
 
-        if (!response.ok) {
-          throw new Error(`Health endpoint failed with status ${response.status}`);
-        }
-
-        const data: HealthStatus = await response.json();
-        setHealthStatus(data);
-      } catch (error) {
-        if (error instanceof DOMException && error.name === 'AbortError') {
-          return;
-        }
-
-        setErrorMessage('Unable to load backend health status.');
-      }
+      setState({
+        healthStatus: healthResult.status,
+        checkedAt: healthResult.timestamp,
+        examCount: examsResult.items.length,
+      });
     }
 
-    loadHealthStatus();
+    loadDashboard().catch((error) => {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        return;
+      }
+
+      setErrorMessage('Unable to load backend API contract data.');
+    });
 
     return () => {
       controller.abort();
@@ -44,23 +46,27 @@ export function HomePage() {
       <p className="subtitle">Local-first study exam simulator</p>
 
       <section className="status-card" aria-label="API health status">
-        <h2>Backend Health</h2>
+        <h2>Backend Contract Status</h2>
 
         {errorMessage ? (
           <p>{errorMessage}</p>
-        ) : healthStatus ? (
+        ) : state ? (
           <dl>
             <div>
-              <dt>Status</dt>
-              <dd>{healthStatus.status}</dd>
+              <dt>Health</dt>
+              <dd>{state.healthStatus}</dd>
             </div>
             <div>
               <dt>Checked at</dt>
-              <dd>{new Date(healthStatus.checkedAt).toLocaleString()}</dd>
+              <dd>{new Date(state.checkedAt).toLocaleString()}</dd>
+            </div>
+            <div>
+              <dt>Exam contracts</dt>
+              <dd>{state.examCount}</dd>
             </div>
           </dl>
         ) : (
-          <p>Checking backend health…</p>
+          <p>Loading API contract data…</p>
         )}
       </section>
     </main>

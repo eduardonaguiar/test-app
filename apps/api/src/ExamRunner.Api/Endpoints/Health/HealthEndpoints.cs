@@ -13,7 +13,9 @@ public static class HealthEndpoints
                 Version: ResolveVersion())))
             .WithName("GetHealth")
             .WithTags("Health")
-            .WithSummary("Returns API health details");
+            .WithSummary("Returns API health details")
+            .Produces<HealthResponse>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         return app;
     }

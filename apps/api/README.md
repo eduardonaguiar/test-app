@@ -1,26 +1,27 @@
 # API (.NET 8)
 
-Scaffold inicial do backend em `apps/api` com solução .NET e endpoint de saúde.
+Backend modular em `apps/api` com solução .NET e contrato OpenAPI como fonte para geração de clientes frontend.
 
 ## Estrutura
 
 - `ExamRunner.sln`: solução da API.
 - `src/ExamRunner.Api`: projeto ASP.NET Core (Minimal API).
+- `src/ExamRunner.Api/Contracts`: DTOs HTTP explícitos por domínio (`Health`, `Exams`, `Errors`).
 
-## Endpoint disponível
+## Endpoints disponíveis
 
-- `GET /health`
+- `GET /api/health`
   - Retorna `status`, `timestamp` (UTC) e `version`.
+- `GET /api/exams`
+  - Retorna `items` com resumo de exames.
+- `GET /api/exams/{examId}`
+  - Retorna detalhes de exame e usa `ProblemDetails` padronizado para `404`.
 
-Exemplo de resposta:
+## OpenAPI e contratos compartilhados
 
-```json
-{
-  "status": "ok",
-  "timestamp": "2026-04-20T12:00:00+00:00",
-  "version": "1.0.0"
-}
-```
+- Swagger/OpenAPI é publicado pela API em `GET /swagger/v1/swagger.json` (ambiente `Development`).
+- Artefato versionado no monorepo: `contracts/openapi/exam-runner.openapi.json`.
+- Script de exportação: `pnpm api:openapi`.
 
 ## Scripts (raiz do monorepo)
 
@@ -28,3 +29,4 @@ Exemplo de resposta:
 - `pnpm api:build` → build da solução backend.
 - `pnpm api:test` → testes backend.
 - `pnpm api:lint` → valida formatação C# com `dotnet format --verify-no-changes`.
+- `pnpm api:openapi` → publica artefato OpenAPI para `contracts/openapi`.

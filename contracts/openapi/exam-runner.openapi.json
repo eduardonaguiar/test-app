@@ -1,0 +1,157 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "ExamRunner API",
+    "version": "v1"
+  },
+  "paths": {
+    "/api/health": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Returns API health details",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HealthResponse" }
+              }
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "content": {
+              "application/problem+json": {
+                "schema": { "$ref": "#/components/schemas/ProblemDetails" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/exams": {
+      "get": {
+        "tags": ["Exams"],
+        "summary": "Lista exames importados disponíveis",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ListExamsResponse" }
+              }
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "content": {
+              "application/problem+json": {
+                "schema": { "$ref": "#/components/schemas/ProblemDetails" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/exams/{examId}": {
+      "get": {
+        "tags": ["Exams"],
+        "summary": "Retorna detalhes de um exame",
+        "parameters": [
+          {
+            "name": "examId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ExamDetailResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": { "$ref": "#/components/schemas/ProblemDetails" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HealthResponse": {
+        "type": "object",
+        "required": ["status", "timestamp", "version"],
+        "properties": {
+          "status": { "type": "string" },
+          "timestamp": { "type": "string", "format": "date-time" },
+          "version": { "type": "string" }
+        }
+      },
+      "ExamSummaryResponse": {
+        "type": "object",
+        "required": ["examId", "title", "durationMinutes", "passingScorePercentage"],
+        "properties": {
+          "examId": { "type": "string", "format": "uuid" },
+          "title": { "type": "string" },
+          "durationMinutes": { "type": "integer", "format": "int32" },
+          "passingScorePercentage": { "type": "integer", "format": "int32" }
+        }
+      },
+      "ListExamsResponse": {
+        "type": "object",
+        "required": ["items"],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ExamSummaryResponse" }
+          }
+        }
+      },
+      "ExamSectionResponse": {
+        "type": "object",
+        "required": ["sectionId", "title", "questionCount"],
+        "properties": {
+          "sectionId": { "type": "string" },
+          "title": { "type": "string" },
+          "questionCount": { "type": "integer", "format": "int32" }
+        }
+      },
+      "ExamDetailResponse": {
+        "type": "object",
+        "required": ["examId", "title", "description", "durationMinutes", "passingScorePercentage", "schemaVersion", "sections"],
+        "properties": {
+          "examId": { "type": "string", "format": "uuid" },
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "durationMinutes": { "type": "integer", "format": "int32" },
+          "passingScorePercentage": { "type": "integer", "format": "int32" },
+          "schemaVersion": { "type": "string" },
+          "sections": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ExamSectionResponse" }
+          }
+        }
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "nullable": true },
+          "title": { "type": "string", "nullable": true },
+          "status": { "type": "integer", "format": "int32", "nullable": true },
+          "detail": { "type": "string", "nullable": true },
+          "instance": { "type": "string", "nullable": true }
+        }
+      }
+    }
+  }
+}
