@@ -37,6 +37,7 @@ Os scripts principais do monorepo foram padronizados para um fluxo previsível:
 pnpm dev
 pnpm build
 pnpm lint
+pnpm format
 pnpm test
 pnpm typecheck
 pnpm compose:up
@@ -52,7 +53,9 @@ pnpm db:seed
 - `pnpm build`
   - Executa build dos pacotes JS/TS e build da solução .NET.
 - `pnpm lint`
-  - Executa lint dos pacotes JS/TS e valida formatação C# via `dotnet format --verify-no-changes`.
+  - Executa verificação de formatação (JS e C#) e lint dos pacotes JS/TS.
+- `pnpm format`
+  - Aplica formatação automática em frontend (ESLint --fix) e backend (`dotnet format`).
 - `pnpm test`
   - Executa testes JS/TS e testes backend (.NET).
 - `pnpm typecheck`

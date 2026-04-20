@@ -6,9 +6,9 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "scripts": {
-    "build": "echo 'TODO: build shared types'",
-    "test": "echo 'TODO: test shared types'",
-    "lint": "echo 'TODO: lint shared types'",
-    "typecheck": "echo 'TODO: typecheck shared types'"
+    "build": "pnpm run typecheck",
+    "test": "echo 'No tests for shared-types yet'",
+    "lint": "pnpm run typecheck",
+    "typecheck": "pnpm --filter @exam-runner/web exec tsc -p ../../packages/shared-types/tsconfig.json --noEmit"
   }
 }
