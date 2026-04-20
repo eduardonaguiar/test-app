@@ -42,3 +42,43 @@ public sealed record AttemptExecutionQuestionOptionResponse(
     string OptionCode,
     string Text,
     int DisplayOrder);
+
+public sealed record AttemptResultResponse(
+    Guid AttemptId,
+    Guid ExamId,
+    int Score,
+    decimal Percentage,
+    bool Passed,
+    string Outcome,
+    int TotalQuestions,
+    int CorrectAnswers,
+    int IncorrectAnswers,
+    int UnansweredQuestions,
+    DateTimeOffset SubmittedAt,
+    DateTimeOffset EvaluatedAt,
+    IReadOnlyList<AttemptResultQuestionReviewResponse> QuestionReviews,
+    IReadOnlyList<AttemptResultTopicAnalysisResponse> TopicAnalysis);
+
+public sealed record AttemptResultQuestionReviewResponse(
+    Guid QuestionId,
+    Guid SectionId,
+    string SectionTitle,
+    string QuestionCode,
+    string Prompt,
+    Guid? UserSelectedOptionId,
+    string? UserSelectedOptionCode,
+    string? UserSelectedOptionText,
+    Guid CorrectOptionId,
+    string CorrectOptionCode,
+    string CorrectOptionText,
+    bool IsCorrect,
+    string ExplanationSummary,
+    string ExplanationDetails);
+
+public sealed record AttemptResultTopicAnalysisResponse(
+    string Topic,
+    int TotalQuestions,
+    int CorrectAnswers,
+    int IncorrectAnswers,
+    int UnansweredQuestions,
+    decimal Percentage);

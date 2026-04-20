@@ -67,6 +67,96 @@ public sealed class AttemptService(
         return BuildExecutionStateSnapshot(attempt, now);
     }
 
+    public async Task<AttemptResultSnapshot?> GetResultAsync(Guid attemptId, CancellationToken cancellationToken = default)
+    {
+        var attempt = await LoadAttemptGraphAsync(attemptId, asNoTracking: false, cancellationToken);
+
+        if (attempt is null)
+        {
+            return null;
+        }
+
+        var now = timeProvider.GetUtcNow();
+        var hasTimelineTransition = UpdateAttemptStatusFromTimeline(attempt, now);
+
+        if (hasTimelineTransition)
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        if (attempt.Result is null || !attempt.SubmittedAtUtc.HasValue)
+        {
+            throw new InvalidOperationException("Result is available only after submission.");
+        }
+
+        var questions = attempt.Exam.Sections
+            .SelectMany(section => section.Questions)
+            .Select(question => new ObjectiveQuestionForScoring(
+                question.Id,
+                question.Topic,
+                question.Options.Single(option => option.IsCorrect).Id))
+            .ToArray();
+
+        var answers = attempt.Answers
+            .Select(answer => new ObjectiveAnswerForScoring(answer.QuestionId, answer.SelectedOptionId))
+            .ToArray();
+
+        var topicAnalysis = (attemptScoringService ?? new ObjectiveAttemptScoringService())
+            .ScoreObjectiveAttempt(questions, answers, attempt.Exam.PassingScorePercentage)
+            .TopicBreakdown;
+
+        var selectedOptionsByQuestionId = attempt.Answers
+            .GroupBy(answer => answer.QuestionId)
+            .ToDictionary(group => group.Key, group => group.OrderByDescending(answer => answer.UpdatedAtUtc).First().SelectedOptionId);
+
+        var questionReviews = attempt.Exam.Sections
+            .OrderBy(section => section.DisplayOrder)
+            .SelectMany(section => section.Questions
+                .OrderBy(question => question.DisplayOrder)
+                .Select(question =>
+                {
+                    selectedOptionsByQuestionId.TryGetValue(question.Id, out var selectedOptionId);
+
+                    var correctOption = question.Options.Single(option => option.IsCorrect);
+                    var userOption = selectedOptionId.HasValue
+                        ? question.Options.SingleOrDefault(option => option.Id == selectedOptionId.Value)
+                        : null;
+
+                    return new AttemptResultQuestionReviewSnapshot(
+                        question.Id,
+                        section.Id,
+                        section.Title,
+                        question.QuestionCode,
+                        question.Prompt,
+                        userOption?.Id,
+                        userOption?.OptionCode,
+                        userOption?.Text,
+                        correctOption.Id,
+                        correctOption.OptionCode,
+                        correctOption.Text,
+                        userOption?.Id == correctOption.Id,
+                        question.ExplanationSummary,
+                        question.ExplanationDetails);
+                }))
+            .ToArray();
+
+        return new AttemptResultSnapshot(
+            attempt.Id,
+            attempt.ExamId,
+            attempt.Result.CorrectAnswers,
+            attempt.Result.ScorePercentage,
+            attempt.Result.Passed,
+            attempt.Result.Passed ? "aprovado" : "reprovado",
+            attempt.Result.TotalQuestions,
+            attempt.Result.CorrectAnswers,
+            attempt.Result.IncorrectAnswers,
+            attempt.Result.UnansweredQuestions,
+            attempt.SubmittedAtUtc.Value,
+            attempt.Result.EvaluatedAtUtc,
+            questionReviews,
+            topicAnalysis);
+    }
+
     public async Task<AttemptExecutionStateSnapshot?> ReconnectAsync(Guid attemptId, CancellationToken cancellationToken = default)
     {
         var attempt = await LoadAttemptGraphAsync(attemptId, asNoTracking: false, cancellationToken);
