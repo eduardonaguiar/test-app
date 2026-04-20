@@ -24,9 +24,23 @@ public sealed class ExamEntityConfiguration : IEntityTypeConfiguration<ExamEntit
             .HasMaxLength(32)
             .IsRequired();
 
+        builder.Property(x => x.ReconnectEnabled)
+            .HasDefaultValue(false);
+
+        builder.Property(x => x.MaxReconnectAttempts)
+            .HasDefaultValue(0);
+
+        builder.Property(x => x.ReconnectGracePeriodSeconds)
+            .HasDefaultValue(0);
+
         builder.HasMany(x => x.Sections)
             .WithOne(x => x.Exam)
             .HasForeignKey(x => x.ExamId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(x => x.Attempts)
+            .WithOne(x => x.Exam)
+            .HasForeignKey(x => x.ExamId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

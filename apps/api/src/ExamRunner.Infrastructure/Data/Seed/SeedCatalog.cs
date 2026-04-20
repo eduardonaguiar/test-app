@@ -24,6 +24,9 @@ internal static class SeedCatalog
                 DurationMinutes = 60,
                 PassingScorePercentage = 70,
                 SchemaVersion = "1.0.0",
+                ReconnectEnabled = true,
+                MaxReconnectAttempts = 2,
+                ReconnectGracePeriodSeconds = 120,
                 Sections =
                 [
                     new ExamSectionEntity
@@ -31,14 +34,16 @@ internal static class SeedCatalog
                         Id = DotNetSec1Id,
                         SectionCode = "sec-1",
                         Title = "C# e Runtime",
-                        QuestionCount = 8
+                        QuestionCount = 8,
+                        DisplayOrder = 1
                     },
                     new ExamSectionEntity
                     {
                         Id = DotNetSec2Id,
                         SectionCode = "sec-2",
                         Title = "ASP.NET Core",
-                        QuestionCount = 12
+                        QuestionCount = 12,
+                        DisplayOrder = 2
                     }
                 ]
             },
@@ -50,6 +55,9 @@ internal static class SeedCatalog
                 DurationMinutes = 45,
                 PassingScorePercentage = 75,
                 SchemaVersion = "1.0.0",
+                ReconnectEnabled = true,
+                MaxReconnectAttempts = 2,
+                ReconnectGracePeriodSeconds = 120,
                 Sections =
                 [
                     new ExamSectionEntity
@@ -57,14 +65,16 @@ internal static class SeedCatalog
                         Id = ReactSec1Id,
                         SectionCode = "sec-1",
                         Title = "React Core",
-                        QuestionCount = 10
+                        QuestionCount = 10,
+                        DisplayOrder = 1
                     },
                     new ExamSectionEntity
                     {
                         Id = ReactSec2Id,
                         SectionCode = "sec-2",
                         Title = "TypeScript",
-                        QuestionCount = 10
+                        QuestionCount = 10,
+                        DisplayOrder = 2
                     }
                 ]
             }
