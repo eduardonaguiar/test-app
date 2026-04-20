@@ -42,9 +42,12 @@ pnpm api:test
 pnpm compose:up
 pnpm compose:down
 pnpm contracts:generate
+pnpm api:seed
 ```
 
 > Nesta etapa os pacotes possuem scripts placeholder para validar o setup do workspace.
+
+- `pnpm api:seed` -> importa automaticamente `contracts/exam-schema/examples/exam-basico-curto.json` para o SQLite local (quando o banco ainda está vazio).
 
 ## Docker Compose (desenvolvimento)
 

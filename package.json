@@ -17,6 +17,7 @@
     "web:api:generate": "pnpm --filter @exam-runner/web run generate:api",
     "contracts:generate": "pnpm api:openapi && pnpm web:api:generate",
     "compose:up": "docker compose up --build",
-    "compose:down": "docker compose down"
+    "compose:down": "docker compose down",
+    "api:seed": "bash ./scripts/seed-example-exam.sh"
   }
 }

@@ -53,3 +53,13 @@ dotnet ef database update \
 - `pnpm api:test` → testes backend.
 - `pnpm api:lint` → valida formatação C# com `dotnet format --verify-no-changes`.
 - `pnpm api:openapi` → publica artefato OpenAPI para `contracts/openapi`.
+
+## Seed técnico (importação de exemplo)
+
+Para facilitar testes locais, execute o seed que importa automaticamente o arquivo `contracts/exam-schema/examples/exam-basico-curto.json` para o SQLite local:
+
+```bash
+pnpm api:seed
+```
+
+> O seed só insere dados se a tabela de exames estiver vazia.
