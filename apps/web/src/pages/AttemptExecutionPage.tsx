@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   getAttemptState,
@@ -30,12 +30,44 @@ function getTotalQuestions(attempt: AttemptExecutionStateResponse): number {
   return attempt.questions.length;
 }
 
+function applyPendingAnswers(
+  attempt: AttemptExecutionStateResponse,
+  pendingAnswers: Map<string, string>,
+): AttemptExecutionStateResponse {
+  if (pendingAnswers.size === 0) {
+    return attempt;
+  }
+
+  const questions = attempt.questions.map((question) => {
+    const pendingOptionId = pendingAnswers.get(question.questionId);
+    if (!pendingOptionId) {
+      return question;
+    }
+
+    return {
+      ...question,
+      selectedOptionId: pendingOptionId,
+      isAnswered: true,
+    };
+  });
+
+  const answeredQuestionCount = questions.reduce((count, question) => (question.isAnswered ? count + 1 : count), 0);
+
+  return {
+    ...attempt,
+    questions,
+    answeredQuestionCount,
+  };
+}
+
 export function AttemptExecutionPage() {
   const { attemptId } = useParams();
   const [state, setState] = useState<AttemptExecutionViewModel | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [saveStateMessage, setSaveStateMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const pendingAnswersRef = useRef<Map<string, string>>(new Map());
+  const isSyncingRef = useRef(false);
 
   useEffect(() => {
     if (!attemptId) {
@@ -49,7 +81,7 @@ export function AttemptExecutionPage() {
     async function loadAttemptState() {
       const attempt = await getAttemptState(resolvedAttemptId, controller.signal);
       setState((previous) => ({
-        attempt,
+        attempt: applyPendingAnswers(attempt, pendingAnswersRef.current),
         selectedQuestionIndex: previous
           ? Math.min(previous.selectedQuestionIndex, Math.max(0, attempt.questions.length - 1))
           : 0,
@@ -66,13 +98,55 @@ export function AttemptExecutionPage() {
 
     const intervalId = window.setInterval(() => {
       loadAttemptState().catch(() => {
-        setSaveStateMessage('Sem conexão temporária com a API para sincronização.');
-      });
-    }, 15000);
+      setSaveStateMessage('Sem conexão temporária com a API para sincronização.');
+    });
+  }, 15000);
 
     return () => {
       controller.abort();
       window.clearInterval(intervalId);
+    };
+  }, [attemptId]);
+
+  useEffect(() => {
+    if (!attemptId) {
+      return;
+    }
+
+    const syncIntervalId = window.setInterval(() => {
+      if (isSyncingRef.current || pendingAnswersRef.current.size === 0) {
+        return;
+      }
+
+      const [[questionId, selectedOptionId]] = pendingAnswersRef.current.entries();
+      if (!questionId || !selectedOptionId) {
+        return;
+      }
+
+      isSyncingRef.current = true;
+      saveAttemptAnswer(attemptId, questionId, { selectedOptionId })
+        .then((updatedAttempt) => {
+          pendingAnswersRef.current.delete(questionId);
+          setState((previous) => ({
+            attempt: applyPendingAnswers(updatedAttempt, pendingAnswersRef.current),
+            selectedQuestionIndex: previous?.selectedQuestionIndex ?? 0,
+          }));
+          setSaveStateMessage(
+            pendingAnswersRef.current.size > 0
+              ? 'Sincronizando respostas pendentes...'
+              : 'Todas as respostas foram salvas.',
+          );
+        })
+        .catch(() => {
+          setSaveStateMessage('Falha na sincronização automática. Nova tentativa em instantes.');
+        })
+        .finally(() => {
+          isSyncingRef.current = false;
+        });
+    }, 2000);
+
+    return () => {
+      window.clearInterval(syncIntervalId);
     };
   }, [attemptId]);
 
@@ -93,18 +167,36 @@ export function AttemptExecutionPage() {
       return;
     }
 
-    setSaveStateMessage('Salvando resposta...');
+    pendingAnswersRef.current.set(questionId, optionId);
+    setState((previous) => {
+      if (!previous) {
+        return previous;
+      }
 
-    try {
-      const updated = await saveAttemptAnswer(attemptId, questionId, { selectedOptionId: optionId });
-      setState((previous) => ({
-        attempt: updated,
-        selectedQuestionIndex: previous?.selectedQuestionIndex ?? 0,
-      }));
-      setSaveStateMessage('Resposta salva automaticamente.');
-    } catch {
-      setSaveStateMessage('Falha ao salvar automaticamente. Tente novamente.');
-    }
+      const questions = previous.attempt.questions.map((question) => {
+        if (question.questionId !== questionId) {
+          return question;
+        }
+
+        return {
+          ...question,
+          selectedOptionId: optionId,
+          isAnswered: true,
+        };
+      });
+
+      const answeredQuestionCount = questions.reduce((count, question) => (question.isAnswered ? count + 1 : count), 0);
+
+      return {
+        ...previous,
+        attempt: {
+          ...previous.attempt,
+          questions,
+          answeredQuestionCount,
+        },
+      };
+    });
+    setSaveStateMessage('Resposta registrada localmente. Sincronização automática em andamento.');
   }
 
   async function handleSubmitAttempt() {
