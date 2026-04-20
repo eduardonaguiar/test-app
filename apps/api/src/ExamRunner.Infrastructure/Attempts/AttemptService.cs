@@ -94,7 +94,8 @@ public sealed class AttemptService(
             .Select(question => new ObjectiveQuestionForScoring(
                 question.Id,
                 question.Topic,
-                question.Options.Single(option => option.IsCorrect).Id))
+                question.Options.Single(option => option.IsCorrect).Id,
+                question.Weight))
             .ToArray();
 
         var answers = attempt.Answers
@@ -346,7 +347,8 @@ public sealed class AttemptService(
             .Select(question => new ObjectiveQuestionForScoring(
                 question.Id,
                 question.Topic,
-                question.Options.Single(option => option.IsCorrect).Id))
+                question.Options.Single(option => option.IsCorrect).Id,
+                question.Weight))
             .ToList();
 
         var objectiveAnswers = attempt.Answers

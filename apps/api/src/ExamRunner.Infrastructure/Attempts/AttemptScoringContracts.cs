@@ -3,7 +3,8 @@ namespace ExamRunner.Infrastructure.Attempts;
 public sealed record ObjectiveQuestionForScoring(
     Guid QuestionId,
     string Topic,
-    Guid CorrectOptionId);
+    Guid CorrectOptionId,
+    decimal Weight = 1m);
 
 public sealed record ObjectiveAnswerForScoring(
     Guid QuestionId,
