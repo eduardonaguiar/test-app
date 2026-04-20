@@ -30,31 +30,59 @@ h1 {
   color: #374151;
 }
 
-.status-card {
+.exam-list {
   margin-top: 2rem;
-  max-width: 420px;
+  display: grid;
+  gap: 1rem;
+}
+
+.exam-card {
   padding: 1rem 1.25rem;
   border: 1px solid #d1d5db;
   border-radius: 0.75rem;
   background: #ffffff;
 }
 
-.status-card h2 {
+.exam-card h2 {
   margin-top: 0;
+  margin-bottom: 0.5rem;
 }
 
-.status-card dl {
+.exam-description {
+  margin-top: 0;
+  color: #4b5563;
+}
+
+.exam-metadata {
   margin: 0;
   display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 0.75rem;
 }
 
-.status-card dt {
+.exam-metadata dt {
   font-size: 0.875rem;
   color: #4b5563;
 }
 
-.status-card dd {
+.exam-metadata dd {
   margin: 0;
   font-weight: 600;
+}
+
+.details-button {
+  margin-top: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0.875rem;
+  border-radius: 0.5rem;
+  background: #2563eb;
+  color: #ffffff;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.details-button:hover {
+  background: #1d4ed8;
 }
