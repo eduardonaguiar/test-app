@@ -16,15 +16,20 @@ public sealed class ObjectiveAttemptScoringService : IAttemptScoringService
         var globalTotalQuestions = questions.Count;
         var globalCorrectAnswers = 0;
         var globalIncorrectAnswers = 0;
+        var globalTotalWeight = questions.Sum(question => question.Weight);
+        var globalCorrectWeight = 0m;
         var breakdown = new List<TopicScoreBreakdown>();
 
         foreach (var topicGroup in questions.GroupBy(question => ResolveTopic(question.Topic)).OrderBy(group => group.Key))
         {
-            var topicTotalQuestions = topicGroup.Count();
+            var topicQuestions = topicGroup.ToArray();
+            var topicTotalQuestions = topicQuestions.Length;
             var topicCorrectAnswers = 0;
             var topicIncorrectAnswers = 0;
+            var topicTotalWeight = topicQuestions.Sum(question => question.Weight);
+            var topicCorrectWeight = 0m;
 
-            foreach (var question in topicGroup)
+            foreach (var question in topicQuestions)
             {
                 if (!answerByQuestionId.TryGetValue(question.QuestionId, out var answer) || !answer.SelectedOptionId.HasValue)
                 {
@@ -34,7 +39,9 @@ public sealed class ObjectiveAttemptScoringService : IAttemptScoringService
                 if (answer.SelectedOptionId.Value == question.CorrectOptionId)
                 {
                     topicCorrectAnswers++;
+                    topicCorrectWeight += question.Weight;
                     globalCorrectAnswers++;
+                    globalCorrectWeight += question.Weight;
                 }
                 else
                 {
@@ -44,7 +51,7 @@ public sealed class ObjectiveAttemptScoringService : IAttemptScoringService
             }
 
             var topicUnansweredQuestions = topicTotalQuestions - topicCorrectAnswers - topicIncorrectAnswers;
-            var topicScorePercentage = CalculatePercentage(topicCorrectAnswers, topicTotalQuestions);
+            var topicScorePercentage = CalculatePercentage(topicCorrectWeight, topicTotalWeight);
 
             breakdown.Add(new TopicScoreBreakdown(
                 topicGroup.Key,
@@ -56,7 +63,7 @@ public sealed class ObjectiveAttemptScoringService : IAttemptScoringService
         }
 
         var globalUnansweredQuestions = globalTotalQuestions - globalCorrectAnswers - globalIncorrectAnswers;
-        var globalScorePercentage = CalculatePercentage(globalCorrectAnswers, globalTotalQuestions);
+        var globalScorePercentage = CalculatePercentage(globalCorrectWeight, globalTotalWeight);
 
         return new AttemptScoringResult(
             globalTotalQuestions,
@@ -70,13 +77,13 @@ public sealed class ObjectiveAttemptScoringService : IAttemptScoringService
 
     private static string ResolveTopic(string topic) => string.IsNullOrWhiteSpace(topic) ? DefaultTopic : topic.Trim();
 
-    private static decimal CalculatePercentage(int correctAnswers, int totalQuestions)
+    private static decimal CalculatePercentage(decimal correctWeight, decimal totalWeight)
     {
-        if (totalQuestions == 0)
+        if (totalWeight <= 0m)
         {
             return 0m;
         }
 
-        return Math.Round((decimal)correctAnswers * 100m / totalQuestions, 2, MidpointRounding.AwayFromZero);
+        return Math.Round(correctWeight * 100m / totalWeight, 2, MidpointRounding.AwayFromZero);
     }
 }
