@@ -187,6 +187,10 @@ function validateReconnectPolicy(reconnectPolicy, errors) {
   if (!Number.isInteger(reconnectPolicy.gracePeriodSeconds) || reconnectPolicy.gracePeriodSeconds < 0) {
     addError(errors, '$.reconnectPolicy.gracePeriodSeconds', 'must be an integer greater than or equal to 0');
   }
+
+  if (typeof reconnectPolicy.terminateIfExceeded !== 'boolean') {
+    addError(errors, '$.reconnectPolicy.terminateIfExceeded', 'must be a boolean');
+  }
 }
 
 /**

@@ -17,7 +17,8 @@ const validExam = {
   reconnectPolicy: {
     enabled: true,
     maxReconnects: 2,
-    gracePeriodSeconds: 60
+    gracePeriodSeconds: 60,
+    terminateIfExceeded: true
   },
   sections: [
     {

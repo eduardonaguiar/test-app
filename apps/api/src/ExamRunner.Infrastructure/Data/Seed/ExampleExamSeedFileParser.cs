@@ -33,7 +33,8 @@ internal static class ExampleExamSeedFileParser
             SchemaVersion = payload.SchemaVersion,
             ReconnectEnabled = payload.ReconnectPolicy.Enabled,
             MaxReconnectAttempts = payload.ReconnectPolicy.MaxReconnects,
-            ReconnectGracePeriodSeconds = payload.ReconnectPolicy.GracePeriodSeconds
+            ReconnectGracePeriodSeconds = payload.ReconnectPolicy.GracePeriodSeconds,
+            ReconnectTerminateIfExceeded = payload.ReconnectPolicy.TerminateIfExceeded
         };
 
         var sectionOrder = 1;
@@ -96,7 +97,11 @@ internal static class ExampleExamSeedFileParser
 
     private sealed record SeedMetadataPayload(string ExamId, string Title, string Description);
 
-    private sealed record SeedReconnectPolicyPayload(bool Enabled, int MaxReconnects, int GracePeriodSeconds);
+    private sealed record SeedReconnectPolicyPayload(
+        bool Enabled,
+        int MaxReconnects,
+        int GracePeriodSeconds,
+        bool TerminateIfExceeded);
 
     private sealed record SeedSectionPayload(string SectionId, string Title, List<SeedQuestionPayload> Questions);
 

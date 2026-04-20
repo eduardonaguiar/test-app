@@ -13,7 +13,11 @@ public sealed record ImportExamMetadataPayload(
     string Title,
     string? Description);
 
-public sealed record ImportReconnectPolicyPayload(bool Enabled, int MaxReconnects, int GracePeriodSeconds);
+public sealed record ImportReconnectPolicyPayload(
+    bool Enabled,
+    int MaxReconnects,
+    int GracePeriodSeconds,
+    bool TerminateIfExceeded);
 
 public sealed record ImportSectionPayload(string SectionId, string Title, List<ImportQuestionPayload> Questions);
 

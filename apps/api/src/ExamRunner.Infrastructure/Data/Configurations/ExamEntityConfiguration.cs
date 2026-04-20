@@ -33,6 +33,9 @@ public sealed class ExamEntityConfiguration : IEntityTypeConfiguration<ExamEntit
         builder.Property(x => x.ReconnectGracePeriodSeconds)
             .HasDefaultValue(0);
 
+        builder.Property(x => x.ReconnectTerminateIfExceeded)
+            .HasDefaultValue(true);
+
         builder.HasMany(x => x.Sections)
             .WithOne(x => x.Exam)
             .HasForeignKey(x => x.ExamId)

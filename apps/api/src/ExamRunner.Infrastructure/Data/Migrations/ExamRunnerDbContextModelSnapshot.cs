@@ -148,6 +148,11 @@ partial class ExamRunnerDbContextModelSnapshot : ModelSnapshot
                 .HasColumnType("INTEGER")
                 .HasDefaultValue(0);
 
+            b.Property<bool>("ReconnectTerminateIfExceeded")
+                .ValueGeneratedOnAdd()
+                .HasColumnType("INTEGER")
+                .HasDefaultValue(true);
+
             b.Property<string>("SchemaVersion")
                 .IsRequired()
                 .HasMaxLength(32)

@@ -85,7 +85,8 @@
       "required": [
         "enabled",
         "maxReconnects",
-        "gracePeriodSeconds"
+        "gracePeriodSeconds",
+        "terminateIfExceeded"
       ],
       "properties": {
         "enabled": {
@@ -98,6 +99,9 @@
         "gracePeriodSeconds": {
           "type": "integer",
           "minimum": 0
+        },
+        "terminateIfExceeded": {
+          "type": "boolean"
         }
       }
     },

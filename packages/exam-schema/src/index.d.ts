@@ -12,6 +12,7 @@ export interface ReconnectPolicy {
   enabled: boolean;
   maxReconnects: number;
   gracePeriodSeconds: number;
+  terminateIfExceeded: boolean;
 }
 
 export interface QuestionOption {
