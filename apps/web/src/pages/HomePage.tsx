@@ -37,6 +37,12 @@ export function HomePage() {
       <h1>Provas importadas</h1>
       <p className="subtitle">Listagem carregada diretamente do backend.</p>
 
+      <div className="page-actions">
+        <Link className="details-button secondary" to="/history">
+          Ver histórico de tentativas
+        </Link>
+      </div>
+
       {errorMessage ? (
         <p>{errorMessage}</p>
       ) : state ? (
