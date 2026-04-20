@@ -44,6 +44,53 @@ export type ProblemDetails =
   detail?: string;
   instance?: string;
 };
+export type CreateAttemptRequest = 
+{
+  examId: string;
+};
+export type AttemptResponse = 
+{
+  attemptId: string;
+  examId: string;
+  status: string;
+  startedAt: string;
+  deadlineAt: string;
+  lastSeenAt: string;
+  submittedAt?: string;
+};
+export type AttemptExecutionQuestionOptionResponse = 
+{
+  optionId: string;
+  optionCode: string;
+  text: string;
+  displayOrder: number;
+};
+export type AttemptExecutionQuestionResponse = 
+{
+  questionId: string;
+  sectionId: string;
+  sectionTitle: string;
+  questionCode: string;
+  prompt: string;
+  displayOrder: number;
+  selectedOptionId?: string;
+  isAnswered: boolean;
+  options: AttemptExecutionQuestionOptionResponse[];
+};
+export type AttemptExecutionStateResponse = 
+{
+  attemptId: string;
+  examId: string;
+  status: string;
+  startedAt: string;
+  deadlineAt: string;
+  lastSeenAt: string;
+  submittedAt?: string;
+  remainingSeconds: number;
+  answeredQuestionCount: number;
+  pendingQuestionCount: number;
+  questions: AttemptExecutionQuestionResponse[];
+};
 
 async function parseJson<T>(response: Response): Promise<T> {
   return (await response.json()) as T;
@@ -67,4 +114,31 @@ export async function listExams(signal?: AbortSignal): Promise<ListExamsResponse
   }
 
   return parseJson<ListExamsResponse>(response);
+}
+
+export async function createAttempt(payload: CreateAttemptRequest, signal?: AbortSignal): Promise<AttemptResponse> {
+  const response = await fetch('/api/attempts', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(`POST /api/attempts failed with status ${response.status}`);
+  }
+
+  return parseJson<AttemptResponse>(response);
+}
+
+export async function getAttemptState(attemptId: string, signal?: AbortSignal): Promise<AttemptExecutionStateResponse> {
+  const response = await fetch(`/api/attempts/${attemptId}`, { signal });
+
+  if (!response.ok) {
+    throw new Error(`GET /api/attempts/${attemptId} failed with status ${response.status}`);
+  }
+
+  return parseJson<AttemptExecutionStateResponse>(response);
 }
