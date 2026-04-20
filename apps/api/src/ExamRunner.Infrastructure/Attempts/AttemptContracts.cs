@@ -2,6 +2,8 @@ namespace ExamRunner.Infrastructure.Attempts;
 
 public sealed record CreateAttemptCommand(Guid ExamId);
 
+public sealed record SaveAttemptAnswerCommand(Guid AttemptId, Guid QuestionId, Guid? SelectedOptionId);
+
 public sealed record AttemptSnapshot(
     Guid AttemptId,
     Guid ExamId,

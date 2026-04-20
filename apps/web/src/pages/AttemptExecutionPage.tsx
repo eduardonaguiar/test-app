@@ -1,9 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { getAttemptState, type AttemptExecutionStateResponse } from '../generated/api-contract';
+import {
+  getAttemptState,
+  saveAttemptAnswer,
+  submitAttempt,
+  type AttemptExecutionQuestionResponse,
+  type AttemptExecutionStateResponse,
+} from '../generated/api-contract';
 
 type AttemptExecutionViewModel = {
   attempt: AttemptExecutionStateResponse;
+  selectedQuestionIndex: number;
 };
 
 function formatRemaining(seconds: number): string {
@@ -19,10 +26,16 @@ function formatRemaining(seconds: number): string {
   return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
 }
 
+function getTotalQuestions(attempt: AttemptExecutionStateResponse): number {
+  return attempt.questions.length;
+}
+
 export function AttemptExecutionPage() {
   const { attemptId } = useParams();
   const [state, setState] = useState<AttemptExecutionViewModel | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [saveStateMessage, setSaveStateMessage] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!attemptId) {
@@ -35,7 +48,12 @@ export function AttemptExecutionPage() {
 
     async function loadAttemptState() {
       const attempt = await getAttemptState(resolvedAttemptId, controller.signal);
-      setState({ attempt });
+      setState((previous) => ({
+        attempt,
+        selectedQuestionIndex: previous
+          ? Math.min(previous.selectedQuestionIndex, Math.max(0, attempt.questions.length - 1))
+          : 0,
+      }));
     }
 
     loadAttemptState().catch((error) => {
@@ -46,37 +64,70 @@ export function AttemptExecutionPage() {
       setErrorMessage('Não foi possível carregar o estado da tentativa.');
     });
 
+    const intervalId = window.setInterval(() => {
+      loadAttemptState().catch(() => {
+        setSaveStateMessage('Sem conexão temporária com a API para sincronização.');
+      });
+    }, 15000);
+
     return () => {
       controller.abort();
+      window.clearInterval(intervalId);
     };
   }, [attemptId]);
 
-  const groupedBySection = useMemo(() => {
-    if (!state) {
-      return [];
+  const currentQuestion = useMemo<AttemptExecutionQuestionResponse | null>(() => {
+    if (!state?.attempt.questions.length) {
+      return null;
     }
 
-    const groups = new Map<string, { sectionId: string; sectionTitle: string; questions: AttemptExecutionStateResponse['questions'] }>();
-
-    state.attempt.questions.forEach((question) => {
-      const key = question.sectionId;
-      const current = groups.get(key);
-
-      if (!current) {
-        groups.set(key, {
-          sectionId: question.sectionId,
-          sectionTitle: question.sectionTitle,
-          questions: [question],
-        });
-
-        return;
-      }
-
-      current.questions.push(question);
-    });
-
-    return Array.from(groups.values());
+    return state.attempt.questions[state.selectedQuestionIndex] ?? null;
   }, [state]);
+
+  const totalQuestions = state ? getTotalQuestions(state.attempt) : 0;
+  const answeredQuestions = state?.attempt.answeredQuestionCount ?? 0;
+  const progressPercentage = totalQuestions > 0 ? Math.round((answeredQuestions / totalQuestions) * 100) : 0;
+
+  async function handleSelectOption(questionId: string, optionId: string) {
+    if (!attemptId || !state) {
+      return;
+    }
+
+    setSaveStateMessage('Salvando resposta...');
+
+    try {
+      const updated = await saveAttemptAnswer(attemptId, questionId, { selectedOptionId: optionId });
+      setState((previous) => ({
+        attempt: updated,
+        selectedQuestionIndex: previous?.selectedQuestionIndex ?? 0,
+      }));
+      setSaveStateMessage('Resposta salva automaticamente.');
+    } catch {
+      setSaveStateMessage('Falha ao salvar automaticamente. Tente novamente.');
+    }
+  }
+
+  async function handleSubmitAttempt() {
+    if (!attemptId || !state || state.attempt.status !== 'InProgress') {
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      await submitAttempt(attemptId);
+      const updated = await getAttemptState(attemptId);
+      setState((previous) => ({
+        attempt: updated,
+        selectedQuestionIndex: previous?.selectedQuestionIndex ?? 0,
+      }));
+      setSaveStateMessage('Tentativa submetida com sucesso.');
+    } catch {
+      setSaveStateMessage('Não foi possível submeter a tentativa.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <main className="page">
@@ -93,7 +144,7 @@ export function AttemptExecutionPage() {
             <p className="subtitle">Tentativa {state.attempt.attemptId}</p>
           </header>
 
-          <section className="exam-card" aria-label="Estado da tentativa">
+          <section className="exam-card" aria-label="Resumo de execução">
             <dl className="exam-metadata">
               <div>
                 <dt>Status</dt>
@@ -105,42 +156,81 @@ export function AttemptExecutionPage() {
               </div>
               <div>
                 <dt>Respondidas</dt>
-                <dd>{state.attempt.answeredQuestionCount}</dd>
+                <dd>
+                  {answeredQuestions}/{totalQuestions}
+                </dd>
               </div>
               <div>
-                <dt>Pendentes</dt>
-                <dd>{state.attempt.pendingQuestionCount}</dd>
+                <dt>Progresso</dt>
+                <dd>{progressPercentage}%</dd>
               </div>
             </dl>
+            <div className="progress-track" aria-hidden="true">
+              <div className="progress-fill" style={{ width: `${progressPercentage}%` }} />
+            </div>
+            {saveStateMessage ? <p className="start-hint">{saveStateMessage}</p> : null}
           </section>
 
-          <section className="exam-card" aria-label="Questões da tentativa">
-            <h2>Questões e respostas salvas</h2>
-            {groupedBySection.map((section) => (
-              <article key={section.sectionId} className="attempt-section-block">
-                <h3>{section.sectionTitle}</h3>
-                <ol className="attempt-question-list">
-                  {section.questions.map((question) => (
-                    <li key={question.questionId} className="attempt-question-item">
-                      <p>
-                        <strong>{question.questionCode}</strong> — {question.prompt}
-                      </p>
-                      <p className="attempt-question-status">
-                        {question.isAnswered ? 'Respondida' : 'Pendente'}
-                      </p>
-                      <ul>
-                        {question.options.map((option) => (
-                          <li key={option.optionId}>
-                            {option.optionCode}) {option.text}
-                            {option.optionId === question.selectedOptionId ? ' (selecionada)' : ''}
-                          </li>
-                        ))}
-                      </ul>
-                    </li>
-                  ))}
-                </ol>
-              </article>
-            ))}
+          <section className="exam-card" aria-label="Navegação de questões">
+            <h2>Questões</h2>
+            <div className="question-nav-grid">
+              {state.attempt.questions.map((question, index) => {
+                const selected = index === state.selectedQuestionIndex;
+
+                return (
+                  <button
+                    key={question.questionId}
+                    type="button"
+                    className={`question-nav-button ${question.isAnswered ? 'answered' : 'pending'} ${selected ? 'selected' : ''}`}
+                    onClick={() => setState((previous) => previous ? { ...previous, selectedQuestionIndex: index } : previous)}
+                  >
+                    {question.questionCode}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          {currentQuestion ? (
+            <section className="exam-card" aria-label="Questão atual">
+              <h2>
+                {currentQuestion.questionCode} · {currentQuestion.sectionTitle}
+              </h2>
+              <p>{currentQuestion.prompt}</p>
+
+              <div className="option-list" role="radiogroup" aria-label={`Alternativas da questão ${currentQuestion.questionCode}`}>
+                {currentQuestion.options.map((option) => {
+                  const checked = option.optionId === currentQuestion.selectedOptionId;
+
+                  return (
+                    <label key={option.optionId} className={`option-item ${checked ? 'selected' : ''}`}>
+                      <input
+                        type="radio"
+                        name={currentQuestion.questionId}
+                        value={option.optionId}
+                        checked={checked}
+                        onChange={() => handleSelectOption(currentQuestion.questionId, option.optionId)}
+                        disabled={state.attempt.status !== 'InProgress'}
+                      />
+                      <span>
+                        <strong>{option.optionCode})</strong> {option.text}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </section>
+          ) : null}
+
+          <section className="exam-actions">
+            <button
+              type="button"
+              className="primary-button"
+              onClick={handleSubmitAttempt}
+              disabled={submitting || state.attempt.status !== 'InProgress'}
+            >
+              {submitting ? 'Submetendo...' : 'Submeter prova'}
+            </button>
           </section>
         </>
       ) : (
