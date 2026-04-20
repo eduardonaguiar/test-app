@@ -13,10 +13,30 @@ public sealed record ExamSummaryResponse(
 
 public sealed record ListExamsResponse(IReadOnlyList<ExamSummaryResponse> Items);
 
-public sealed record ExamSectionResponse(
+public sealed record ExamQuestionOptionPreviewResponse(
+    string OptionId,
+    string Text,
+    int DisplayOrder);
+
+public sealed record ExamQuestionPreviewResponse(
+    string QuestionId,
+    string Prompt,
+    string Topic,
+    string Difficulty,
+    decimal Weight,
+    IReadOnlyList<ExamQuestionOptionPreviewResponse> Options);
+
+public sealed record ExamSectionDetailResponse(
     string SectionId,
     string Title,
-    int QuestionCount);
+    int DisplayOrder,
+    int QuestionCount,
+    IReadOnlyList<ExamQuestionPreviewResponse> Questions);
+
+public sealed record ReconnectPolicyResponse(
+    bool Enabled,
+    int MaxReconnectAttempts,
+    int GracePeriodSeconds);
 
 public sealed record ExamDetailResponse(
     Guid ExamId,
@@ -25,6 +45,9 @@ public sealed record ExamDetailResponse(
     int DurationMinutes,
     int PassingScorePercentage,
     string SchemaVersion,
-    IReadOnlyList<ExamSectionResponse> Sections);
+    int SectionCount,
+    int QuestionCount,
+    ReconnectPolicyResponse ReconnectPolicy,
+    IReadOnlyList<ExamSectionDetailResponse> Sections);
 
 public sealed record ImportExamResponse(Guid ExamId, string Title, int SectionCount, int QuestionCount);

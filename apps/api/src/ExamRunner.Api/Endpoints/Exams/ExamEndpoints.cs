@@ -125,9 +125,35 @@ public static class ExamEndpoints
             DurationMinutes: exam.DurationMinutes,
             PassingScorePercentage: exam.PassingScorePercentage,
             SchemaVersion: exam.SchemaVersion,
+            SectionCount: exam.Sections.Count,
+            QuestionCount: exam.Sections.Sum(section => section.Questions.Count),
+            ReconnectPolicy: new ReconnectPolicyResponse(
+                Enabled: exam.ReconnectEnabled,
+                MaxReconnectAttempts: exam.MaxReconnectAttempts,
+                GracePeriodSeconds: exam.ReconnectGracePeriodSeconds),
             Sections: exam.Sections
-                .OrderBy(section => section.SectionCode)
-                .Select(section => new ExamSectionResponse(section.SectionCode, section.Title, section.QuestionCount))
+                .OrderBy(section => section.DisplayOrder)
+                .Select(section => new ExamSectionDetailResponse(
+                    SectionId: section.SectionCode,
+                    Title: section.Title,
+                    DisplayOrder: section.DisplayOrder,
+                    QuestionCount: section.Questions.Count,
+                    Questions: section.Questions
+                        .OrderBy(question => question.DisplayOrder)
+                        .Select(question => new ExamQuestionPreviewResponse(
+                            QuestionId: question.QuestionCode,
+                            Prompt: question.Prompt,
+                            Topic: question.Topic,
+                            Difficulty: question.Difficulty,
+                            Weight: question.Weight,
+                            Options: question.Options
+                                .OrderBy(option => option.DisplayOrder)
+                                .Select(option => new ExamQuestionOptionPreviewResponse(
+                                    OptionId: option.OptionCode,
+                                    Text: option.Text,
+                                    DisplayOrder: option.DisplayOrder))
+                                .ToArray()))
+                        .ToArray()))
                 .ToArray());
 
         return TypedResults.Ok(response);
