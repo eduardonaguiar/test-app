@@ -27,6 +27,7 @@ internal static class SeedCatalog
                 ReconnectEnabled = true,
                 MaxReconnectAttempts = 2,
                 ReconnectGracePeriodSeconds = 120,
+                ReconnectTerminateIfExceeded = true,
                 Sections =
                 [
                     new ExamSectionEntity
@@ -58,6 +59,7 @@ internal static class SeedCatalog
                 ReconnectEnabled = true,
                 MaxReconnectAttempts = 2,
                 ReconnectGracePeriodSeconds = 120,
+                ReconnectTerminateIfExceeded = true,
                 Sections =
                 [
                     new ExamSectionEntity

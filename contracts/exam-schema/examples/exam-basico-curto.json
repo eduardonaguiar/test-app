@@ -12,7 +12,8 @@
   "reconnectPolicy": {
     "enabled": true,
     "maxReconnects": 1,
-    "gracePeriodSeconds": 60
+    "gracePeriodSeconds": 60,
+    "terminateIfExceeded": true
   },
   "sections": [
     {

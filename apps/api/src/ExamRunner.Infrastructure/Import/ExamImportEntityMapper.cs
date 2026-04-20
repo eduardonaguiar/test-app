@@ -16,7 +16,8 @@ public sealed class ExamImportEntityMapper : IExamImportEntityMapper
             SchemaVersion = payload.SchemaVersion,
             ReconnectEnabled = payload.ReconnectPolicy.Enabled,
             MaxReconnectAttempts = payload.ReconnectPolicy.MaxReconnects,
-            ReconnectGracePeriodSeconds = payload.ReconnectPolicy.GracePeriodSeconds
+            ReconnectGracePeriodSeconds = payload.ReconnectPolicy.GracePeriodSeconds,
+            ReconnectTerminateIfExceeded = payload.ReconnectPolicy.TerminateIfExceeded
         };
 
         var sectionOrder = 1;

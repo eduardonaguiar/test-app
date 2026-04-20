@@ -37,6 +37,15 @@ public static class AttemptEndpoints
             .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesProblem(StatusCodes.Status500InternalServerError);
 
+        app.MapPost("/attempts/{attemptId:guid}/reconnect", ReconnectAttempt)
+            .WithName("ReconnectAttempt")
+            .WithTags("Attempts")
+            .WithSummary("Retoma uma tentativa aplicando a política de reconexão")
+            .Produces<AttemptExecutionStateResponse>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
+
         app.MapPost("/attempts/{attemptId:guid}/submit", SubmitAttempt)
             .WithName("SubmitAttempt")
             .WithTags("Attempts")
@@ -47,6 +56,44 @@ public static class AttemptEndpoints
             .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         return app;
+    }
+
+    private static async Task<Results<Ok<AttemptExecutionStateResponse>, NotFound<ProblemDetails>, Conflict<ProblemDetails>>> ReconnectAttempt(
+        Guid attemptId,
+        IAttemptService attemptService,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var snapshot = await attemptService.ReconnectAsync(attemptId, cancellationToken);
+
+            if (snapshot is null)
+            {
+                var notFound = new ProblemDetails
+                {
+                    Title = "Attempt not found",
+                    Detail = $"Attempt with id '{attemptId}' was not found.",
+                    Status = StatusCodes.Status404NotFound,
+                    Type = $"https://httpstatuses.com/{StatusCodes.Status404NotFound}"
+                };
+                notFound.Extensions["code"] = ApiErrorCodes.NotFound;
+                return TypedResults.NotFound(notFound);
+            }
+
+            return TypedResults.Ok(MapExecutionStateResponse(snapshot));
+        }
+        catch (InvalidOperationException ex)
+        {
+            var conflict = new ProblemDetails
+            {
+                Title = "Attempt cannot be reconnected",
+                Detail = ex.Message,
+                Status = StatusCodes.Status409Conflict,
+                Type = $"https://httpstatuses.com/{StatusCodes.Status409Conflict}"
+            };
+            conflict.Extensions["code"] = ApiErrorCodes.Conflict;
+            return TypedResults.Conflict(conflict);
+        }
     }
 
     private static async Task<Results<Created<AttemptResponse>, NotFound<ProblemDetails>, BadRequest<ProblemDetails>>> CreateAttempt(

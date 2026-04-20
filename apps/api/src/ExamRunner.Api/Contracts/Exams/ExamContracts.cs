@@ -36,7 +36,8 @@ public sealed record ExamSectionDetailResponse(
 public sealed record ReconnectPolicyResponse(
     bool Enabled,
     int MaxReconnectAttempts,
-    int GracePeriodSeconds);
+    int GracePeriodSeconds,
+    bool TerminateIfExceeded);
 
 public sealed record ExamDetailResponse(
     Guid ExamId,

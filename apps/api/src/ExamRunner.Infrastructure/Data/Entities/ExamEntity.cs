@@ -11,6 +11,7 @@ public sealed class ExamEntity
     public bool ReconnectEnabled { get; set; }
     public int MaxReconnectAttempts { get; set; }
     public int ReconnectGracePeriodSeconds { get; set; }
+    public bool ReconnectTerminateIfExceeded { get; set; }
 
     public List<ExamSectionEntity> Sections { get; set; } = [];
     public List<AttemptEntity> Attempts { get; set; } = [];

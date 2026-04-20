@@ -119,7 +119,8 @@ public sealed class ExamImportServiceTests
           "reconnectPolicy": {
             "enabled": true,
             "maxReconnects": 2,
-            "gracePeriodSeconds": 30
+            "gracePeriodSeconds": 30,
+            "terminateIfExceeded": true
           },
           "sections": [
             {

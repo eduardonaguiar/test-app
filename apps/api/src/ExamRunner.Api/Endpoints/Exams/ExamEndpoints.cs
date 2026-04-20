@@ -130,7 +130,8 @@ public static class ExamEndpoints
             ReconnectPolicy: new ReconnectPolicyResponse(
                 Enabled: exam.ReconnectEnabled,
                 MaxReconnectAttempts: exam.MaxReconnectAttempts,
-                GracePeriodSeconds: exam.ReconnectGracePeriodSeconds),
+                GracePeriodSeconds: exam.ReconnectGracePeriodSeconds,
+                TerminateIfExceeded: exam.ReconnectTerminateIfExceeded),
             Sections: exam.Sections
                 .OrderBy(section => section.DisplayOrder)
                 .Select(section => new ExamSectionDetailResponse(

@@ -64,6 +64,67 @@ public sealed class AttemptService(ExamRunnerDbContext dbContext, TimeProvider t
         return BuildExecutionStateSnapshot(attempt, now);
     }
 
+    public async Task<AttemptExecutionStateSnapshot?> ReconnectAsync(Guid attemptId, CancellationToken cancellationToken = default)
+    {
+        var attempt = await LoadAttemptGraphAsync(attemptId, asNoTracking: false, cancellationToken);
+
+        if (attempt is null)
+        {
+            return null;
+        }
+
+        var now = timeProvider.GetUtcNow();
+        var hasTimelineTransition = UpdateAttemptStatusFromTimeline(attempt, now);
+
+        if (hasTimelineTransition)
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        if (attempt.Status != AttemptStatuses.InProgress)
+        {
+            throw new InvalidOperationException("Only attempts in progress can be reconnected.");
+        }
+
+        if (!attempt.Exam.ReconnectEnabled)
+        {
+            attempt.LastSeenAtUtc = now;
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return BuildExecutionStateSnapshot(attempt, now);
+        }
+
+        var reconnectSequence = attempt.ReconnectEvents.Count + 1;
+        var disconnectedAt = attempt.LastSeenAtUtc;
+        var offlineDurationSeconds = (int)Math.Max(0, Math.Floor((now - disconnectedAt).TotalSeconds));
+        var gracePeriodRespected = offlineDurationSeconds <= attempt.Exam.ReconnectGracePeriodSeconds;
+        var maxReconnectsRespected = reconnectSequence <= attempt.Exam.MaxReconnectAttempts;
+        var policyExceeded = !gracePeriodRespected || !maxReconnectsRespected;
+        var finalizeAttempt = policyExceeded && attempt.Exam.ReconnectTerminateIfExceeded;
+
+        attempt.ReconnectEvents.Add(new ReconnectEventEntity
+        {
+            Id = Guid.NewGuid(),
+            AttemptId = attempt.Id,
+            SequenceNumber = reconnectSequence,
+            DisconnectedAtUtc = disconnectedAt,
+            ReconnectedAtUtc = now,
+            OfflineDurationSeconds = offlineDurationSeconds,
+            GracePeriodRespected = gracePeriodRespected,
+            FinalizedAttempt = finalizeAttempt
+        });
+
+        if (finalizeAttempt)
+        {
+            attempt.Status = AttemptStatuses.Finalized;
+            attempt.SubmittedAtUtc ??= now;
+        }
+
+        attempt.LastSeenAtUtc = now;
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return BuildExecutionStateSnapshot(attempt, now);
+    }
+
     public async Task<AttemptExecutionStateSnapshot?> SaveAnswerAsync(SaveAttemptAnswerCommand command, CancellationToken cancellationToken = default)
     {
         var attempt = await LoadAttemptGraphAsync(command.AttemptId, asNoTracking: false, cancellationToken);
@@ -175,6 +236,7 @@ public sealed class AttemptService(ExamRunnerDbContext dbContext, TimeProvider t
 
         return await query
             .Include(x => x.Answers)
+            .Include(x => x.ReconnectEvents)
             .Include(x => x.Exam)
                 .ThenInclude(x => x.Sections)
                     .ThenInclude(x => x.Questions)

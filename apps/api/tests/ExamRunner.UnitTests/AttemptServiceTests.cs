@@ -871,6 +871,199 @@ public sealed class AttemptServiceTests
         }
     }
 
+    [Fact]
+    public async Task ReconnectAsync_WhenPolicyIsRespected_ShouldKeepAttemptInProgressAndPersistEvent()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<ExamRunnerDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        var now = new DateTimeOffset(2026, 4, 20, 12, 0, 0, TimeSpan.Zero);
+        var examId = Guid.NewGuid();
+        var attemptId = Guid.NewGuid();
+
+        await using (var seedContext = new ExamRunnerDbContext(options))
+        {
+            await seedContext.Database.EnsureCreatedAsync();
+            seedContext.Exams.Add(new ExamEntity
+            {
+                Id = examId,
+                Title = "Exam",
+                Description = "Desc",
+                DurationMinutes = 60,
+                PassingScorePercentage = 70,
+                SchemaVersion = "1.0.0",
+                ReconnectEnabled = true,
+                MaxReconnectAttempts = 2,
+                ReconnectGracePeriodSeconds = 120,
+                ReconnectTerminateIfExceeded = true
+            });
+            seedContext.Attempts.Add(new AttemptEntity
+            {
+                Id = attemptId,
+                ExamId = examId,
+                Status = AttemptStatuses.InProgress,
+                StartedAtUtc = now.AddMinutes(-10),
+                DeadlineAtUtc = now.AddMinutes(50),
+                LastSeenAtUtc = now.AddSeconds(-30)
+            });
+            await seedContext.SaveChangesAsync();
+        }
+
+        await using (var actContext = new ExamRunnerDbContext(options))
+        {
+            var sut = new AttemptService(actContext, new FrozenTimeProvider(now));
+            var snapshot = await sut.ReconnectAsync(attemptId, CancellationToken.None);
+            snapshot.Should().NotBeNull();
+            snapshot!.Status.Should().Be(AttemptStatuses.InProgress);
+            snapshot.LastSeenAtUtc.Should().Be(now);
+        }
+
+        await using (var assertContext = new ExamRunnerDbContext(options))
+        {
+            var eventRow = await assertContext.ReconnectEvents.SingleAsync(x => x.AttemptId == attemptId);
+            eventRow.OfflineDurationSeconds.Should().Be(30);
+            eventRow.GracePeriodRespected.Should().BeTrue();
+            eventRow.FinalizedAttempt.Should().BeFalse();
+        }
+    }
+
+    [Fact]
+    public async Task ReconnectAsync_WhenGracePeriodIsExceededAndTerminateIsTrue_ShouldFinalizeAttempt()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<ExamRunnerDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        var now = new DateTimeOffset(2026, 4, 20, 12, 0, 0, TimeSpan.Zero);
+        var examId = Guid.NewGuid();
+        var attemptId = Guid.NewGuid();
+
+        await using (var seedContext = new ExamRunnerDbContext(options))
+        {
+            await seedContext.Database.EnsureCreatedAsync();
+            seedContext.Exams.Add(new ExamEntity
+            {
+                Id = examId,
+                Title = "Exam",
+                Description = "Desc",
+                DurationMinutes = 60,
+                PassingScorePercentage = 70,
+                SchemaVersion = "1.0.0",
+                ReconnectEnabled = true,
+                MaxReconnectAttempts = 2,
+                ReconnectGracePeriodSeconds = 60,
+                ReconnectTerminateIfExceeded = true
+            });
+            seedContext.Attempts.Add(new AttemptEntity
+            {
+                Id = attemptId,
+                ExamId = examId,
+                Status = AttemptStatuses.InProgress,
+                StartedAtUtc = now.AddMinutes(-10),
+                DeadlineAtUtc = now.AddMinutes(50),
+                LastSeenAtUtc = now.AddSeconds(-90)
+            });
+            await seedContext.SaveChangesAsync();
+        }
+
+        await using (var actContext = new ExamRunnerDbContext(options))
+        {
+            var sut = new AttemptService(actContext, new FrozenTimeProvider(now));
+            var snapshot = await sut.ReconnectAsync(attemptId, CancellationToken.None);
+
+            snapshot.Should().NotBeNull();
+            snapshot!.Status.Should().Be(AttemptStatuses.Finalized);
+            snapshot.SubmittedAtUtc.Should().Be(now);
+        }
+    }
+
+    [Fact]
+    public async Task ReconnectAsync_WhenReconnectCountIsExceededButTerminationIsDisabled_ShouldKeepAttemptInProgress()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<ExamRunnerDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        var now = new DateTimeOffset(2026, 4, 20, 12, 0, 0, TimeSpan.Zero);
+        var examId = Guid.NewGuid();
+        var attemptId = Guid.NewGuid();
+
+        await using (var seedContext = new ExamRunnerDbContext(options))
+        {
+            await seedContext.Database.EnsureCreatedAsync();
+            seedContext.Exams.Add(new ExamEntity
+            {
+                Id = examId,
+                Title = "Exam",
+                Description = "Desc",
+                DurationMinutes = 60,
+                PassingScorePercentage = 70,
+                SchemaVersion = "1.0.0",
+                ReconnectEnabled = true,
+                MaxReconnectAttempts = 1,
+                ReconnectGracePeriodSeconds = 120,
+                ReconnectTerminateIfExceeded = false
+            });
+            seedContext.Attempts.Add(new AttemptEntity
+            {
+                Id = attemptId,
+                ExamId = examId,
+                Status = AttemptStatuses.InProgress,
+                StartedAtUtc = now.AddMinutes(-10),
+                DeadlineAtUtc = now.AddMinutes(50),
+                LastSeenAtUtc = now.AddSeconds(-30),
+                ReconnectEvents =
+                [
+                    new ReconnectEventEntity
+                    {
+                        Id = Guid.NewGuid(),
+                        SequenceNumber = 1,
+                        DisconnectedAtUtc = now.AddMinutes(-3),
+                        ReconnectedAtUtc = now.AddMinutes(-2),
+                        OfflineDurationSeconds = 60,
+                        GracePeriodRespected = true,
+                        FinalizedAttempt = false
+                    }
+                ]
+            });
+            await seedContext.SaveChangesAsync();
+        }
+
+        await using (var actContext = new ExamRunnerDbContext(options))
+        {
+            var sut = new AttemptService(actContext, new FrozenTimeProvider(now));
+            var snapshot = await sut.ReconnectAsync(attemptId, CancellationToken.None);
+
+            snapshot.Should().NotBeNull();
+            snapshot!.Status.Should().Be(AttemptStatuses.InProgress);
+        }
+
+        await using (var assertContext = new ExamRunnerDbContext(options))
+        {
+            var events = await assertContext.ReconnectEvents
+                .Where(x => x.AttemptId == attemptId)
+                .OrderBy(x => x.SequenceNumber)
+                .ToListAsync();
+
+            events.Should().HaveCount(2);
+            events[1].GracePeriodRespected.Should().BeTrue();
+            events[1].FinalizedAttempt.Should().BeFalse();
+
+            var attempt = await assertContext.Attempts.SingleAsync(x => x.Id == attemptId);
+            attempt.Status.Should().Be(AttemptStatuses.InProgress);
+        }
+    }
+
     private sealed class FrozenTimeProvider(DateTimeOffset now) : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => now;
