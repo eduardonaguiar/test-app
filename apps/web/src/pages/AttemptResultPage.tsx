@@ -142,9 +142,14 @@ export function AttemptResultPage() {
 
   return (
     <main className="page">
-      <Link to={`/attempts/${attemptId ?? ''}`} className="back-link">
-        ← Voltar para execução
-      </Link>
+      <div className="inline-links">
+        <Link to={`/attempts/${attemptId ?? ''}`} className="back-link">
+          ← Voltar para execução
+        </Link>
+        <Link to="/history" className="back-link">
+          Ver histórico completo
+        </Link>
+      </div>
 
       {errorMessage ? (
         <p>{errorMessage}</p>
