@@ -22,5 +22,10 @@ public sealed class ExamSectionEntityConfiguration : IEntityTypeConfiguration<Ex
 
         builder.HasIndex(x => new { x.ExamId, x.SectionCode })
             .IsUnique();
+
+        builder.HasMany(x => x.Questions)
+            .WithOne(x => x.Section)
+            .HasForeignKey(x => x.SectionId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }
