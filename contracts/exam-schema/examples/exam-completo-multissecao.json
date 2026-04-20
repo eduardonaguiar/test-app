@@ -1,0 +1,133 @@
+{
+  "schemaVersion": "1.0.0",
+  "metadata": {
+    "examId": "engenharia-software-avancado-v1",
+    "title": "Engenharia de Software — Simulado Completo",
+    "description": "Prova de prática com múltiplas seções, temas variados e explicações detalhadas para revisão pós-prova.",
+    "language": "pt-BR",
+    "tags": ["engenharia-software", "arquitetura", "testes", "devops"]
+  },
+  "durationMinutes": 90,
+  "passingScore": 75,
+  "reconnectPolicy": {
+    "enabled": true,
+    "maxReconnects": 3,
+    "gracePeriodSeconds": 300
+  },
+  "sections": [
+    {
+      "sectionId": "sec-arquitetura",
+      "title": "Arquitetura e Design",
+      "questions": [
+        {
+          "questionId": "arq-1",
+          "prompt": "Em uma arquitetura em camadas, qual prática ajuda mais a manter baixo acoplamento entre camadas?",
+          "options": [
+            { "optionId": "a", "text": "Permitir acesso direto ao banco por qualquer camada" },
+            { "optionId": "b", "text": "Definir contratos explícitos entre camadas" },
+            { "optionId": "c", "text": "Centralizar toda lógica em um único módulo" },
+            { "optionId": "d", "text": "Compartilhar estados globais mutáveis" }
+          ],
+          "correctOptionId": "b",
+          "explanationSummary": "Contratos explícitos minimizam dependências implícitas.",
+          "explanationDetailed": "Quando cada camada depende de contratos estáveis (interfaces, DTOs e casos de uso), mudanças internas ficam isoladas e os impactos são mais previsíveis. Isso melhora testabilidade, manutenção e evolução incremental.",
+          "topic": "Arquitetura",
+          "difficulty": "medium",
+          "weight": 1.5
+        },
+        {
+          "questionId": "arq-2",
+          "prompt": "Qual é um benefício principal de aplicar DDD no domínio central do produto?",
+          "options": [
+            { "optionId": "a", "text": "Eliminar totalmente a necessidade de testes" },
+            { "optionId": "b", "text": "Trocar regras de negócio por configuração estática" },
+            { "optionId": "c", "text": "Modelar regras de negócio com linguagem ubíqua" },
+            { "optionId": "d", "text": "Substituir persistência por memória local" }
+          ],
+          "correctOptionId": "c",
+          "explanationSummary": "DDD enfatiza modelo alinhado ao negócio.",
+          "explanationDetailed": "Domain-Driven Design busca capturar conceitos e invariantes essenciais do domínio usando linguagem ubíqua entre time técnico e especialistas. Isso reduz ambiguidades e protege regras críticas de dispersão em camadas técnicas.",
+          "topic": "DDD",
+          "difficulty": "medium",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "sectionId": "sec-qualidade",
+      "title": "Testes e Qualidade",
+      "questions": [
+        {
+          "questionId": "qual-1",
+          "prompt": "Qual cenário é mais adequado para um teste de integração de API com banco SQLite?",
+          "options": [
+            { "optionId": "a", "text": "Validar apenas funções puras sem I/O" },
+            { "optionId": "b", "text": "Verificar endpoint HTTP, validação e persistência juntos" },
+            { "optionId": "c", "text": "Testar somente estilo de código" },
+            { "optionId": "d", "text": "Executar benchmark de 10 horas" }
+          ],
+          "correctOptionId": "b",
+          "explanationSummary": "Integração cobre fronteiras reais da aplicação.",
+          "explanationDetailed": "Testes de integração devem exercitar fluxos completos entre camadas e dependências reais (HTTP + aplicação + persistência). Isso detecta incompatibilidades de contrato e problemas de mapeamento que testes unitários isolados não capturam.",
+          "topic": "Testes de Integração",
+          "difficulty": "medium",
+          "weight": 1.25
+        },
+        {
+          "questionId": "qual-2",
+          "prompt": "Qual prática melhora a confiabilidade de validação de entrada no backend?",
+          "options": [
+            { "optionId": "a", "text": "Depender apenas da validação do frontend" },
+            { "optionId": "b", "text": "Aceitar payload parcial e corrigir silenciosamente" },
+            { "optionId": "c", "text": "Aplicar validação declarativa com regras claras" },
+            { "optionId": "d", "text": "Ignorar campos desconhecidos sem controle" }
+          ],
+          "correctOptionId": "c",
+          "explanationSummary": "Validação declarativa torna o comportamento previsível.",
+          "explanationDetailed": "Regras explícitas de validação no backend garantem consistência independente do cliente. Além disso, mensagens de erro claras facilitam correção por parte do frontend e reduzem estados inválidos no domínio.",
+          "topic": "Validação",
+          "difficulty": "easy",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "sectionId": "sec-operacao",
+      "title": "Operação e Entrega",
+      "questions": [
+        {
+          "questionId": "ops-1",
+          "prompt": "Em ambiente local com Docker Compose, qual abordagem facilita onboarding de novos devs?",
+          "options": [
+            { "optionId": "a", "text": "Exigir instalação manual de cada dependência" },
+            { "optionId": "b", "text": "Fornecer comando único de subida com serviços documentados" },
+            { "optionId": "c", "text": "Remover documentação para evitar manutenção" },
+            { "optionId": "d", "text": "Executar frontend e backend em máquinas diferentes sem script" }
+          ],
+          "correctOptionId": "b",
+          "explanationSummary": "Comando único e documentação reduzem atrito inicial.",
+          "explanationDetailed": "Ao padronizar inicialização com Docker Compose e documentar variáveis/volumes, o time reduz divergências de ambiente. Isso acelera setup, aumenta previsibilidade e evita erros comuns de configuração local.",
+          "topic": "Dev Experience",
+          "difficulty": "easy",
+          "weight": 0.75
+        },
+        {
+          "questionId": "ops-2",
+          "prompt": "Para um sistema de prova cronometrada, por que o backend deve ser fonte oficial do tempo?",
+          "options": [
+            { "optionId": "a", "text": "Porque o relógio do cliente sempre é preciso" },
+            { "optionId": "b", "text": "Porque simplifica ignorar reconexões" },
+            { "optionId": "c", "text": "Porque evita manipulação e mantém consistência de regras" },
+            { "optionId": "d", "text": "Porque elimina necessidade de persistência" }
+          ],
+          "correctOptionId": "c",
+          "explanationSummary": "Tempo no backend protege integridade da tentativa.",
+          "explanationDetailed": "Se o cliente controlasse o tempo oficial, ajustes de relógio local ou manipulação da interface poderiam comprometer justiça e consistência. Com cálculo de início/prazo no servidor, decisões de timeout e submissão permanecem auditáveis e determinísticas.",
+          "topic": "Timer e Regras",
+          "difficulty": "hard",
+          "weight": 1.5
+        }
+      ]
+    }
+  ]
+}

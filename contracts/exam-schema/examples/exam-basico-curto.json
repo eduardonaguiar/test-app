@@ -1,0 +1,57 @@
+{
+  "schemaVersion": "1.0.0",
+  "metadata": {
+    "examId": "fundamentos-redes-basico-v1",
+    "title": "Fundamentos de Redes — Simulado Rápido",
+    "description": "Prova curta para validar fluxo de importação e execução básica.",
+    "language": "pt-BR",
+    "tags": ["redes", "iniciante", "simulado-curto"]
+  },
+  "durationMinutes": 15,
+  "passingScore": 70,
+  "reconnectPolicy": {
+    "enabled": true,
+    "maxReconnects": 1,
+    "gracePeriodSeconds": 60
+  },
+  "sections": [
+    {
+      "sectionId": "sec-conceitos",
+      "title": "Conceitos Básicos",
+      "questions": [
+        {
+          "questionId": "q1",
+          "prompt": "Qual camada do modelo OSI é responsável por roteamento entre redes?",
+          "options": [
+            { "optionId": "a", "text": "Camada de Enlace" },
+            { "optionId": "b", "text": "Camada de Rede" },
+            { "optionId": "c", "text": "Camada de Aplicação" },
+            { "optionId": "d", "text": "Camada Física" }
+          ],
+          "correctOptionId": "b",
+          "explanationSummary": "Roteamento é função da camada de Rede.",
+          "explanationDetailed": "No modelo OSI, a camada 3 (Rede) trata de endereçamento lógico e roteamento entre redes distintas. Dispositivos como roteadores operam principalmente nesta camada.",
+          "topic": "OSI",
+          "difficulty": "easy",
+          "weight": 1
+        },
+        {
+          "questionId": "q2",
+          "prompt": "Qual protocolo é usado para resolução de nomes de domínio para endereços IP?",
+          "options": [
+            { "optionId": "a", "text": "DHCP" },
+            { "optionId": "b", "text": "SNMP" },
+            { "optionId": "c", "text": "DNS" },
+            { "optionId": "d", "text": "NTP" }
+          ],
+          "correctOptionId": "c",
+          "explanationSummary": "DNS converte nomes em IPs.",
+          "explanationDetailed": "O Domain Name System (DNS) mantém uma estrutura hierárquica de nomes e permite que clientes consultem registros para obter o endereço IP associado a um domínio.",
+          "topic": "Protocolos",
+          "difficulty": "easy",
+          "weight": 1
+        }
+      ]
+    }
+  ]
+}
