@@ -183,6 +183,13 @@ public sealed class AttemptService(ExamRunnerDbContext dbContext, TimeProvider t
     public async Task<AttemptSnapshot?> SubmitAsync(Guid attemptId, CancellationToken cancellationToken = default)
     {
         var attempt = await dbContext.Attempts
+            .Include(x => x.Answers)
+            .Include(x => x.Result)
+            .Include(x => x.Exam)
+                .ThenInclude(x => x.Sections)
+                    .ThenInclude(x => x.Questions)
+                        .ThenInclude(x => x.Options)
+            .AsSplitQuery()
             .SingleOrDefaultAsync(x => x.Id == attemptId, cancellationToken);
 
         if (attempt is null)
@@ -207,6 +214,23 @@ public sealed class AttemptService(ExamRunnerDbContext dbContext, TimeProvider t
         attempt.SubmittedAtUtc = now;
         attempt.LastSeenAtUtc = now;
 
+        var scoredResult = BuildScoredResult(attempt, now);
+
+        if (attempt.Result is null)
+        {
+            attempt.Result = scoredResult;
+        }
+        else
+        {
+            attempt.Result.TotalQuestions = scoredResult.TotalQuestions;
+            attempt.Result.CorrectAnswers = scoredResult.CorrectAnswers;
+            attempt.Result.IncorrectAnswers = scoredResult.IncorrectAnswers;
+            attempt.Result.UnansweredQuestions = scoredResult.UnansweredQuestions;
+            attempt.Result.ScorePercentage = scoredResult.ScorePercentage;
+            attempt.Result.Passed = scoredResult.Passed;
+            attempt.Result.EvaluatedAtUtc = scoredResult.EvaluatedAtUtc;
+        }
+
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return new AttemptSnapshot(
@@ -217,6 +241,58 @@ public sealed class AttemptService(ExamRunnerDbContext dbContext, TimeProvider t
             attempt.DeadlineAtUtc,
             attempt.LastSeenAtUtc,
             attempt.SubmittedAtUtc);
+    }
+
+    private static AttemptResultEntity BuildScoredResult(AttemptEntity attempt, DateTimeOffset evaluatedAtUtc)
+    {
+        var questions = attempt.Exam.Sections
+            .SelectMany(section => section.Questions)
+            .ToList();
+
+        var answerByQuestionId = attempt.Answers
+            .GroupBy(answer => answer.QuestionId)
+            .ToDictionary(group => group.Key, group => group.Last());
+
+        var totalQuestions = questions.Count;
+        var correctAnswers = 0;
+        var incorrectAnswers = 0;
+
+        foreach (var question in questions)
+        {
+            if (!answerByQuestionId.TryGetValue(question.Id, out var answer) || !answer.SelectedOptionId.HasValue)
+            {
+                continue;
+            }
+
+            var isCorrect = question.Options.Any(option => option.Id == answer.SelectedOptionId.Value && option.IsCorrect);
+
+            if (isCorrect)
+            {
+                correctAnswers++;
+            }
+            else
+            {
+                incorrectAnswers++;
+            }
+        }
+
+        var unansweredQuestions = totalQuestions - correctAnswers - incorrectAnswers;
+        var scorePercentage = totalQuestions == 0
+            ? 0m
+            : Math.Round((decimal)correctAnswers * 100m / totalQuestions, 2, MidpointRounding.AwayFromZero);
+
+        return new AttemptResultEntity
+        {
+            Id = Guid.NewGuid(),
+            AttemptId = attempt.Id,
+            TotalQuestions = totalQuestions,
+            CorrectAnswers = correctAnswers,
+            IncorrectAnswers = incorrectAnswers,
+            UnansweredQuestions = unansweredQuestions,
+            ScorePercentage = scorePercentage,
+            Passed = scorePercentage >= attempt.Exam.PassingScorePercentage,
+            EvaluatedAtUtc = evaluatedAtUtc
+        };
     }
 
     private async Task<AttemptEntity?> LoadAttemptGraphAsync(Guid attemptId, bool asNoTracking, CancellationToken cancellationToken)
