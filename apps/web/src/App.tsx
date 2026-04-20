@@ -1,4 +1,5 @@
 import { Route, Routes } from 'react-router-dom';
+import { AttemptExecutionPage } from './pages/AttemptExecutionPage';
 import { ExamDetailsPage } from './pages/ExamDetailsPage';
 import { HomePage } from './pages/HomePage';
 
@@ -16,6 +17,7 @@ export function App() {
     <Routes>
       <Route path="/" element={<HomePage />} />
       <Route path="/exams/:examId" element={<ExamDetailsPage />} />
+      <Route path="/attempts/:attemptId" element={<AttemptExecutionPage />} />
       <Route path="*" element={<PlaceholderPage />} />
     </Routes>
   );

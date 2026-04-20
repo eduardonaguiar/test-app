@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import type { ExamDetailResponse } from '../generated/api-contract';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { createAttempt, type ExamDetailResponse } from '../generated/api-contract';
 
 type ReconnectPolicyViewModel = {
   enabled: boolean;
@@ -62,6 +62,7 @@ function extractReconnectPolicy(payload: unknown): ReconnectPolicyViewModel | nu
 
 export function ExamDetailsPage() {
   const { examId } = useParams();
+  const navigate = useNavigate();
   const [state, setState] = useState<ExamDetailsViewModel | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [startMessage, setStartMessage] = useState<string | null>(null);
@@ -124,6 +125,21 @@ export function ExamDetailsPage() {
     () => state?.exam.sections.reduce((accumulator, section) => accumulator + section.questionCount, 0) ?? 0,
     [state],
   );
+
+  async function handleStartAttempt() {
+    if (!state?.exam.examId) {
+      return;
+    }
+
+    setStartMessage('Iniciando tentativa...');
+
+    try {
+      const attempt = await createAttempt({ examId: state.exam.examId });
+      navigate(`/attempts/${attempt.attemptId}`);
+    } catch {
+      setStartMessage('Não foi possível iniciar a tentativa neste momento.');
+    }
+  }
 
   return (
     <main className="page">
@@ -194,9 +210,7 @@ export function ExamDetailsPage() {
             <button
               type="button"
               className="primary-button"
-              onClick={() =>
-                setStartMessage('Botão pronto para criar tentativa. Integração com POST /attempts será conectada na próxima tarefa.')
-              }
+              onClick={handleStartAttempt}
             >
               Iniciar prova
             </button>
