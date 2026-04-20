@@ -108,4 +108,114 @@ storybook-static/
 # Misc
 # ------------------------------
 *.pid
+*.seed# ------------------------------
+# OS / Editor
+# ------------------------------
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.tmp
+*.temp
+.vscode/
+.idea/
+
+# ------------------------------
+# Logs
+# ------------------------------
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ------------------------------
+# Environment / Secrets
+# ------------------------------
+.env
+.env.*
+!.env.example
+!.env.*.example
+secrets/
+*.pfx
+*.snk
+
+# ------------------------------
+# Node / Frontend
+# ------------------------------
+node_modules/
+.pnpm-store/
+.npm/
+dist/
+build/
+coverage/
+vite.svg
+*.tsbuildinfo
+
+# Turborepo / Nx / cache-like folders (safe even if not used yet)
+.turbo/
+.nx/
+.cache/
+
+# ------------------------------
+# .NET / C#
+# ------------------------------
+bin/
+obj/
+out/
+TestResults/
+*.user
+*.rsuser
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Rider / ReSharper
+_ReSharper*/
+*.ReSharper
+*.DotSettings.user
+
+# ASP.NET local files
+appsettings.Development.json
+appsettings.Local.json
+
+# ------------------------------
+# EF / Database / Local data
+# ------------------------------
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Keep migration source files versioned, but ignore runtime/local DBs
+data/
+!data/.gitkeep
+
+# ------------------------------
+# Docker
+# ------------------------------
+.docker/
+docker-data/
+*.tar
+
+# ------------------------------
+# Generated files / artifacts
+# ------------------------------
+artifacts/
+tmp/
+temp/
+
+# ------------------------------
+# Frontend test outputs
+# ------------------------------
+playwright-report/
+test-results/
+storybook-static/
+
+# ------------------------------
+# Misc
+# ------------------------------
+*.pid
 *.seed
