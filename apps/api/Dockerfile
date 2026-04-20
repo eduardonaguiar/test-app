@@ -6,4 +6,4 @@ ENV ASPNETCORE_URLS=http://0.0.0.0:8080
 
 EXPOSE 8080
 
-CMD ["sh", "-c", "dotnet restore apps/api/ExamRunner.sln && dotnet watch --project apps/api/src/ExamRunner.Api run --urls http://0.0.0.0:8080"]
+CMD ["sh", "-c", "dotnet restore apps/api/ExamRunner.sln && dotnet run --project apps/api/src/ExamRunner.Api --urls http://0.0.0.0:8080"]

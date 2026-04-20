@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Hosting;
 using NJsonSchema;
 
 namespace ExamRunner.Infrastructure.Import;
