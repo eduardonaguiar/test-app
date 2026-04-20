@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   getAttemptState,
   saveAttemptAnswer,
@@ -62,6 +62,7 @@ function applyPendingAnswers(
 
 export function AttemptExecutionPage() {
   const { attemptId } = useParams();
+  const navigate = useNavigate();
   const [state, setState] = useState<AttemptExecutionViewModel | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [saveStateMessage, setSaveStateMessage] = useState<string | null>(null);
@@ -213,7 +214,8 @@ export function AttemptExecutionPage() {
         attempt: updated,
         selectedQuestionIndex: previous?.selectedQuestionIndex ?? 0,
       }));
-      setSaveStateMessage('Tentativa submetida com sucesso.');
+      setSaveStateMessage('Tentativa submetida com sucesso. Redirecionando para o resultado...');
+      window.setTimeout(() => navigate(`/attempts/${attemptId}/result`), 400);
     } catch {
       setSaveStateMessage('Não foi possível submeter a tentativa.');
     } finally {
@@ -323,6 +325,11 @@ export function AttemptExecutionPage() {
             >
               {submitting ? 'Submetendo...' : 'Submeter prova'}
             </button>
+            {state.attempt.status !== 'InProgress' ? (
+              <Link to={`/attempts/${state.attempt.attemptId}/result`} className="details-button">
+                Ver resultado final
+              </Link>
+            ) : null}
           </section>
         </>
       ) : (

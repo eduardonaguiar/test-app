@@ -1,0 +1,304 @@
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+
+type AttemptResultQuestionReviewResponse = {
+  questionId: string;
+  sectionId: string;
+  sectionTitle: string;
+  questionCode: string;
+  prompt: string;
+  userSelectedOptionId?: string;
+  userSelectedOptionCode?: string;
+  userSelectedOptionText?: string;
+  correctOptionId: string;
+  correctOptionCode: string;
+  correctOptionText: string;
+  isCorrect: boolean;
+  explanationSummary: string;
+  explanationDetails: string;
+};
+
+type AttemptResultTopicAnalysisResponse = {
+  topic: string;
+  totalQuestions: number;
+  correctAnswers: number;
+  incorrectAnswers: number;
+  unansweredQuestions: number;
+  percentage: number;
+};
+
+type AttemptResultResponse = {
+  attemptId: string;
+  examId: string;
+  score: number;
+  percentage: number;
+  passed: boolean;
+  outcome: string;
+  totalQuestions: number;
+  correctAnswers: number;
+  incorrectAnswers: number;
+  unansweredQuestions: number;
+  submittedAt: string;
+  evaluatedAt: string;
+  questionReviews: AttemptResultQuestionReviewResponse[];
+  topicAnalysis: AttemptResultTopicAnalysisResponse[];
+};
+
+type ReviewFilter = 'all' | 'incorrect' | 'correct' | 'unanswered';
+
+function normalizePercentage(value: number): string {
+  const normalized = Number.isFinite(value) ? value : 0;
+  return `${normalized.toFixed(1)}%`;
+}
+
+function formatDateTime(value: string): string {
+  const parsed = new Date(value);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(parsed);
+}
+
+function getReviewStatus(review: AttemptResultQuestionReviewResponse): 'Correta' | 'Errada' | 'Sem resposta' {
+  if (!review.userSelectedOptionId) {
+    return 'Sem resposta';
+  }
+
+  return review.isCorrect ? 'Correta' : 'Errada';
+}
+
+export function AttemptResultPage() {
+  const { attemptId } = useParams();
+  const [result, setResult] = useState<AttemptResultResponse | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [filter, setFilter] = useState<ReviewFilter>('all');
+
+  useEffect(() => {
+    if (!attemptId) {
+      setErrorMessage('ID da tentativa inválido.');
+      return;
+    }
+
+    const controller = new AbortController();
+
+    async function loadResult() {
+      const response = await fetch(`/api/attempts/${attemptId}/result`, {
+        signal: controller.signal,
+      });
+
+      if (response.status === 404) {
+        setErrorMessage('Tentativa não encontrada.');
+        return;
+      }
+
+      if (response.status === 409) {
+        setErrorMessage('O resultado ainda não está disponível. Submeta a tentativa e tente novamente.');
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(`GET /api/attempts/${attemptId}/result failed with status ${response.status}`);
+      }
+
+      const payload = (await response.json()) as AttemptResultResponse;
+      setResult(payload);
+    }
+
+    loadResult().catch((error) => {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        return;
+      }
+
+      setErrorMessage('Não foi possível carregar o resultado da tentativa.');
+    });
+
+    return () => {
+      controller.abort();
+    };
+  }, [attemptId]);
+
+  const filteredReviews = useMemo(() => {
+    if (!result) {
+      return [];
+    }
+
+    switch (filter) {
+      case 'incorrect':
+        return result.questionReviews.filter((review) => review.userSelectedOptionId && !review.isCorrect);
+      case 'correct':
+        return result.questionReviews.filter((review) => review.isCorrect);
+      case 'unanswered':
+        return result.questionReviews.filter((review) => !review.userSelectedOptionId);
+      case 'all':
+      default:
+        return result.questionReviews;
+    }
+  }, [filter, result]);
+
+  return (
+    <main className="page">
+      <Link to={`/attempts/${attemptId ?? ''}`} className="back-link">
+        ← Voltar para execução
+      </Link>
+
+      {errorMessage ? (
+        <p>{errorMessage}</p>
+      ) : result ? (
+        <>
+          <header className="exam-details-header">
+            <h1>Resultado final da tentativa</h1>
+            <p className="subtitle">Tentativa {result.attemptId}</p>
+          </header>
+
+          <section className="exam-card" aria-label="Resumo da nota">
+            <dl className="exam-metadata result-metadata">
+              <div>
+                <dt>Nota</dt>
+                <dd>{result.score}</dd>
+              </div>
+              <div>
+                <dt>Percentual</dt>
+                <dd>{normalizePercentage(result.percentage)}</dd>
+              </div>
+              <div>
+                <dt>Status</dt>
+                <dd>
+                  <span className={`result-status-badge ${result.passed ? 'passed' : 'failed'}`}>
+                    {result.passed ? 'Aprovado' : 'Reprovado'}
+                  </span>
+                </dd>
+              </div>
+              <div>
+                <dt>Resultado</dt>
+                <dd>{result.outcome}</dd>
+              </div>
+              <div>
+                <dt>Acertos</dt>
+                <dd>{result.correctAnswers}</dd>
+              </div>
+              <div>
+                <dt>Erros</dt>
+                <dd>{result.incorrectAnswers}</dd>
+              </div>
+              <div>
+                <dt>Em branco</dt>
+                <dd>{result.unansweredQuestions}</dd>
+              </div>
+              <div>
+                <dt>Submetida em</dt>
+                <dd>{formatDateTime(result.submittedAt)}</dd>
+              </div>
+            </dl>
+          </section>
+
+          {result.topicAnalysis.length > 0 ? (
+            <section className="exam-card" aria-label="Desempenho por tópico">
+              <h2>Desempenho por tópico</h2>
+              <div className="topic-analysis-list">
+                {result.topicAnalysis.map((topic) => (
+                  <article key={topic.topic} className="topic-analysis-item">
+                    <h3>{topic.topic}</h3>
+                    <p>
+                      {topic.correctAnswers}/{topic.totalQuestions} corretas ({normalizePercentage(topic.percentage)})
+                    </p>
+                  </article>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          <section className="exam-card" aria-label="Revisão detalhada por questão">
+            <div className="review-header">
+              <h2>Revisão detalhada por questão</h2>
+              <div className="filter-group" role="group" aria-label="Filtro de revisão">
+                <button
+                  type="button"
+                  className={`filter-button ${filter === 'all' ? 'active' : ''}`}
+                  onClick={() => setFilter('all')}
+                >
+                  Todas
+                </button>
+                <button
+                  type="button"
+                  className={`filter-button ${filter === 'incorrect' ? 'active' : ''}`}
+                  onClick={() => setFilter('incorrect')}
+                >
+                  Só erradas
+                </button>
+                <button
+                  type="button"
+                  className={`filter-button ${filter === 'correct' ? 'active' : ''}`}
+                  onClick={() => setFilter('correct')}
+                >
+                  Só corretas
+                </button>
+                <button
+                  type="button"
+                  className={`filter-button ${filter === 'unanswered' ? 'active' : ''}`}
+                  onClick={() => setFilter('unanswered')}
+                >
+                  Sem resposta
+                </button>
+              </div>
+            </div>
+
+            <p className="subtitle">
+              Exibindo {filteredReviews.length} de {result.questionReviews.length} questões.
+            </p>
+
+            <div className="review-list">
+              {filteredReviews.map((review) => {
+                const status = getReviewStatus(review);
+                const statusClass = status === 'Correta' ? 'correct' : status === 'Errada' ? 'incorrect' : 'unanswered';
+
+                return (
+                  <article key={review.questionId} className="review-item">
+                    <header className="review-item-header">
+                      <h3>
+                        {review.questionCode} · {review.sectionTitle}
+                      </h3>
+                      <span className={`review-status ${statusClass}`}>{status}</span>
+                    </header>
+
+                    <p>{review.prompt}</p>
+
+                    <dl className="review-details">
+                      <div>
+                        <dt>Sua resposta</dt>
+                        <dd>
+                          {review.userSelectedOptionCode && review.userSelectedOptionText
+                            ? `${review.userSelectedOptionCode}) ${review.userSelectedOptionText}`
+                            : 'Não respondida'}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Resposta correta</dt>
+                        <dd>
+                          {review.correctOptionCode}) {review.correctOptionText}
+                        </dd>
+                      </div>
+                    </dl>
+
+                    <p>
+                      <strong>Resumo:</strong> {review.explanationSummary}
+                    </p>
+                    <p>
+                      <strong>Comentário detalhado:</strong> {review.explanationDetails}
+                    </p>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        </>
+      ) : (
+        <p>Carregando resultado da tentativa…</p>
+      )}
+    </main>
+  );
+}
