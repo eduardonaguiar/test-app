@@ -15,6 +15,14 @@ public sealed class AttemptResultEntityConfiguration : IEntityTypeConfiguration<
         builder.Property(x => x.ScorePercentage)
             .HasPrecision(5, 2);
 
+        builder.Property(x => x.QuestionReviewsJson)
+            .HasColumnType("TEXT")
+            .HasDefaultValue("[]");
+
+        builder.Property(x => x.TopicAnalysisJson)
+            .HasColumnType("TEXT")
+            .HasDefaultValue("[]");
+
         builder.HasIndex(x => x.AttemptId)
             .IsUnique();
     }
