@@ -1,3 +1,4 @@
+using ExamRunner.Api.Endpoints.Attempts;
 using ExamRunner.Api.Endpoints.Exams;
 using ExamRunner.Api.Endpoints.Health;
 using ExamRunner.Infrastructure.Extensions;
@@ -41,6 +42,7 @@ var api = app.MapGroup("/api")
 
 api.MapHealthEndpoints();
 api.MapExamEndpoints();
+api.MapAttemptEndpoints();
 
 app.Run();
 
