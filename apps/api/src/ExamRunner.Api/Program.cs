@@ -1,6 +1,6 @@
-using Microsoft.AspNetCore.Mvc;
 using ExamRunner.Api.Endpoints.Exams;
 using ExamRunner.Api.Endpoints.Health;
+using ExamRunner.Infrastructure.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,6 +14,7 @@ builder.Services.AddProblemDetails(options =>
 });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
 
 var app = builder.Build();
 
@@ -24,6 +25,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+await app.Services.InitializeInfrastructureAsync();
 
 var api = app.MapGroup("/api")
     .WithTags("API")
