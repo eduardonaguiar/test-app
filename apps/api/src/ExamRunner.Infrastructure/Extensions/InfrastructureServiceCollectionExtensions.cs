@@ -25,6 +25,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton(TimeProvider.System);
 
         services.AddScoped<IExamReadRepository, ExamReadRepository>();
+        services.AddScoped<IAttemptScoringService, ObjectiveAttemptScoringService>();
         services.AddScoped<IAttemptService, AttemptService>();
 
         services.AddScoped<IOfficialExamSchemaValidator, OfficialExamSchemaValidator>();
