@@ -1,3 +1,4 @@
+using ExamRunner.Infrastructure.Attempts;
 using ExamRunner.Infrastructure.Data;
 using ExamRunner.Infrastructure.Import;
 using ExamRunner.Infrastructure.Repositories;
@@ -21,7 +22,10 @@ public static class InfrastructureServiceCollectionExtensions
             options.UseSqlite(connectionString, sqlite =>
                 sqlite.MigrationsAssembly(typeof(ExamRunnerDbContext).Assembly.FullName)));
 
+        services.AddSingleton(TimeProvider.System);
+
         services.AddScoped<IExamReadRepository, ExamReadRepository>();
+        services.AddScoped<IAttemptService, AttemptService>();
 
         services.AddScoped<IOfficialExamSchemaValidator, OfficialExamSchemaValidator>();
         services.AddScoped<IExamImportPayloadParser, ExamImportPayloadParser>();
