@@ -45,21 +45,50 @@ pnpm compose:down
 
 > Nesta etapa os pacotes possuem scripts placeholder para validar o setup do workspace.
 
-## Docker (desenvolvimento)
+## Docker Compose (desenvolvimento)
 
-Os serviços de desenvolvimento foram configurados para fluxo iterativo com bind mount:
+O arquivo `docker-compose.yml` na raiz sobe os dois serviços necessários para desenvolvimento local com um comando.
 
-- `apps/web/Dockerfile`: container Node + pnpm para Vite com hot reload.
-- `apps/api/Dockerfile`: container .NET SDK para `dotnet watch`.
-- `infra/docker/docker-compose.yml`: sobe `web` (porta `5173`) e `api` (porta `8080`) com volumes persistentes para cache de dependências.
+### Serviços e portas
 
-Subir ambiente:
+- `web` (Vite): `http://localhost:5173`
+- `api` (ASP.NET Core): `http://localhost:8080`
+- `health` da API: `http://localhost:8080/health`
+
+### Comunicação entre serviços
+
+- O serviço `web` recebe `VITE_API_BASE_URL=http://api:8080`.
+- O Vite usa proxy para `/health`, encaminhando para o serviço `api` na rede interna do Compose.
+- Assim, o frontend no navegador consegue consultar saúde do backend sem problema de CORS.
+
+### Volumes
+
+- `./:/workspace`: bind mount do código-fonte para hot reload.
+- `web-node-modules`: volume nomeado para `node_modules`.
+- `web-pnpm-store`: cache do store do pnpm.
+- `api-nuget`: cache de pacotes NuGet.
+
+### Comandos usados
+
+Subir ambiente (com build):
+
+```bash
+docker compose up --build
+```
+
+Ou via script da raiz:
 
 ```bash
 pnpm compose:up
 ```
 
 Derrubar ambiente:
+
+```bash
+docker compose down
+```
+
+Ou via script:
 
 ```bash
 pnpm compose:down
