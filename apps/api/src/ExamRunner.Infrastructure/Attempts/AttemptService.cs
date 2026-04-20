@@ -86,19 +86,13 @@ public sealed class AttemptService(ExamRunnerDbContext dbContext, TimeProvider t
             throw new InvalidOperationException("Only attempts in progress can be reconnected.");
         }
 
-        if (!attempt.Exam.ReconnectEnabled)
-        {
-            attempt.LastSeenAtUtc = now;
-            await dbContext.SaveChangesAsync(cancellationToken);
-            return BuildExecutionStateSnapshot(attempt, now);
-        }
-
         var reconnectSequence = attempt.ReconnectEvents.Count + 1;
         var disconnectedAt = attempt.LastSeenAtUtc;
         var offlineDurationSeconds = (int)Math.Max(0, Math.Floor((now - disconnectedAt).TotalSeconds));
-        var gracePeriodRespected = offlineDurationSeconds <= attempt.Exam.ReconnectGracePeriodSeconds;
-        var maxReconnectsRespected = reconnectSequence <= attempt.Exam.MaxReconnectAttempts;
-        var policyExceeded = !gracePeriodRespected || !maxReconnectsRespected;
+        var reconnectPolicyEnabled = attempt.Exam.ReconnectEnabled;
+        var gracePeriodRespected = !reconnectPolicyEnabled || offlineDurationSeconds <= attempt.Exam.ReconnectGracePeriodSeconds;
+        var maxReconnectsRespected = !reconnectPolicyEnabled || reconnectSequence <= attempt.Exam.MaxReconnectAttempts;
+        var policyExceeded = reconnectPolicyEnabled && (!gracePeriodRespected || !maxReconnectsRespected);
         var finalizeAttempt = policyExceeded && attempt.Exam.ReconnectTerminateIfExceeded;
 
         attempt.ReconnectEvents.Add(new ReconnectEventEntity
