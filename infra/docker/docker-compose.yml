@@ -1,0 +1,14 @@
+services:
+  web:
+    image: node:22-alpine
+    working_dir: /workspace
+    command: sh -c "echo 'web container placeholder' && tail -f /dev/null"
+    volumes:
+      - ../../:/workspace
+
+  api:
+    image: mcr.microsoft.com/dotnet/sdk:8.0
+    working_dir: /workspace
+    command: sh -c "echo 'api container placeholder' && tail -f /dev/null"
+    volumes:
+      - ../../:/workspace

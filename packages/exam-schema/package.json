@@ -1,0 +1,14 @@
+{
+  "name": "@exam-runner/exam-schema",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "build": "echo 'TODO: validate and package exam schema'",
+    "test": "echo 'TODO: test exam schema artifacts'",
+    "lint": "echo 'TODO: lint exam schema artifacts'"
+  }
+}

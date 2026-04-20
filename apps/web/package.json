@@ -1,0 +1,13 @@
+{
+  "name": "@exam-runner/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "echo 'TODO: scaffold Vite + React app'",
+    "build": "echo 'TODO: build web app'",
+    "test": "echo 'TODO: run web tests'",
+    "lint": "echo 'TODO: lint web app'",
+    "typecheck": "echo 'TODO: typecheck web app'"
+  }
+}
