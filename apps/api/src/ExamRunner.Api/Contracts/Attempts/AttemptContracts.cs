@@ -2,6 +2,8 @@ namespace ExamRunner.Api.Contracts.Attempts;
 
 public sealed record CreateAttemptRequest(Guid ExamId);
 
+public sealed record SaveAttemptAnswerRequest(Guid? SelectedOptionId);
+
 public sealed record AttemptResponse(
     Guid AttemptId,
     Guid ExamId,

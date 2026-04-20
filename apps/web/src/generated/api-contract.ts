@@ -77,6 +77,10 @@ export type AttemptExecutionQuestionResponse =
   isAnswered: boolean;
   options: AttemptExecutionQuestionOptionResponse[];
 };
+export type SaveAttemptAnswerRequest = 
+{
+  selectedOptionId?: string;
+};
 export type AttemptExecutionStateResponse = 
 {
   attemptId: string;
@@ -141,4 +145,34 @@ export async function getAttemptState(attemptId: string, signal?: AbortSignal): 
   }
 
   return parseJson<AttemptExecutionStateResponse>(response);
+}
+
+export async function saveAttemptAnswer(attemptId: string, questionId: string, payload: SaveAttemptAnswerRequest, signal?: AbortSignal): Promise<AttemptExecutionStateResponse> {
+  const response = await fetch(`/api/attempts/${attemptId}/answers/${questionId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(`PUT /api/attempts/${attemptId}/answers/${questionId} failed with status ${response.status}`);
+  }
+
+  return parseJson<AttemptExecutionStateResponse>(response);
+}
+
+export async function submitAttempt(attemptId: string, signal?: AbortSignal): Promise<AttemptResponse> {
+  const response = await fetch(`/api/attempts/${attemptId}/submit`, {
+    method: 'POST',
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(`POST /api/attempts/${attemptId}/submit failed with status ${response.status}`);
+  }
+
+  return parseJson<AttemptResponse>(response);
 }

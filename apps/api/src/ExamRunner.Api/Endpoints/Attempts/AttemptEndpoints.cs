@@ -27,6 +27,25 @@ public static class AttemptEndpoints
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status500InternalServerError);
 
+        app.MapPut("/attempts/{attemptId:guid}/answers/{questionId:guid}", SaveAnswer)
+            .WithName("SaveAttemptAnswer")
+            .WithTags("Attempts")
+            .WithSummary("Salva a resposta de uma questão")
+            .Produces<AttemptExecutionStateResponse>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
+
+        app.MapPost("/attempts/{attemptId:guid}/submit", SubmitAttempt)
+            .WithName("SubmitAttempt")
+            .WithTags("Attempts")
+            .WithSummary("Submete a tentativa")
+            .Produces<AttemptResponse>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
+
         return app;
     }
 
@@ -52,14 +71,7 @@ public static class AttemptEndpoints
         try
         {
             var snapshot = await attemptService.CreateAsync(new CreateAttemptCommand(request.ExamId), cancellationToken);
-            var response = new AttemptResponse(
-                snapshot.AttemptId,
-                snapshot.ExamId,
-                snapshot.Status,
-                snapshot.StartedAtUtc,
-                snapshot.DeadlineAtUtc,
-                snapshot.LastSeenAtUtc,
-                snapshot.SubmittedAtUtc);
+            var response = MapAttemptResponse(snapshot);
 
             return TypedResults.Created($"/api/attempts/{response.AttemptId}", response);
         }
@@ -99,7 +111,113 @@ public static class AttemptEndpoints
             return TypedResults.NotFound(problem);
         }
 
-        var response = new AttemptExecutionStateResponse(
+        return TypedResults.Ok(MapExecutionStateResponse(snapshot));
+    }
+
+    private static async Task<Results<Ok<AttemptExecutionStateResponse>, NotFound<ProblemDetails>, BadRequest<ProblemDetails>, Conflict<ProblemDetails>>> SaveAnswer(
+        Guid attemptId,
+        Guid questionId,
+        SaveAttemptAnswerRequest request,
+        IAttemptService attemptService,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var snapshot = await attemptService.SaveAnswerAsync(
+                new SaveAttemptAnswerCommand(attemptId, questionId, request.SelectedOptionId),
+                cancellationToken);
+
+            if (snapshot is null)
+            {
+                var notFound = new ProblemDetails
+                {
+                    Title = "Attempt not found",
+                    Detail = $"Attempt with id '{attemptId}' was not found.",
+                    Status = StatusCodes.Status404NotFound,
+                    Type = $"https://httpstatuses.com/{StatusCodes.Status404NotFound}"
+                };
+                notFound.Extensions["code"] = ApiErrorCodes.NotFound;
+                return TypedResults.NotFound(notFound);
+            }
+
+            return TypedResults.Ok(MapExecutionStateResponse(snapshot));
+        }
+        catch (ArgumentException ex)
+        {
+            var badRequest = new ProblemDetails
+            {
+                Title = "Invalid answer payload",
+                Detail = ex.Message,
+                Status = StatusCodes.Status400BadRequest,
+                Type = $"https://httpstatuses.com/{StatusCodes.Status400BadRequest}"
+            };
+            badRequest.Extensions["code"] = ApiErrorCodes.ValidationFailed;
+            return TypedResults.BadRequest(badRequest);
+        }
+        catch (InvalidOperationException ex)
+        {
+            var conflict = new ProblemDetails
+            {
+                Title = "Attempt cannot be changed",
+                Detail = ex.Message,
+                Status = StatusCodes.Status409Conflict,
+                Type = $"https://httpstatuses.com/{StatusCodes.Status409Conflict}"
+            };
+            conflict.Extensions["code"] = ApiErrorCodes.Conflict;
+            return TypedResults.Conflict(conflict);
+        }
+    }
+
+    private static async Task<Results<Ok<AttemptResponse>, NotFound<ProblemDetails>, Conflict<ProblemDetails>>> SubmitAttempt(
+        Guid attemptId,
+        IAttemptService attemptService,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var snapshot = await attemptService.SubmitAsync(attemptId, cancellationToken);
+
+            if (snapshot is null)
+            {
+                var notFound = new ProblemDetails
+                {
+                    Title = "Attempt not found",
+                    Detail = $"Attempt with id '{attemptId}' was not found.",
+                    Status = StatusCodes.Status404NotFound,
+                    Type = $"https://httpstatuses.com/{StatusCodes.Status404NotFound}"
+                };
+                notFound.Extensions["code"] = ApiErrorCodes.NotFound;
+                return TypedResults.NotFound(notFound);
+            }
+
+            return TypedResults.Ok(MapAttemptResponse(snapshot));
+        }
+        catch (InvalidOperationException ex)
+        {
+            var conflict = new ProblemDetails
+            {
+                Title = "Attempt cannot be submitted",
+                Detail = ex.Message,
+                Status = StatusCodes.Status409Conflict,
+                Type = $"https://httpstatuses.com/{StatusCodes.Status409Conflict}"
+            };
+            conflict.Extensions["code"] = ApiErrorCodes.Conflict;
+            return TypedResults.Conflict(conflict);
+        }
+    }
+
+    private static AttemptResponse MapAttemptResponse(AttemptSnapshot snapshot) =>
+        new(
+            snapshot.AttemptId,
+            snapshot.ExamId,
+            snapshot.Status,
+            snapshot.StartedAtUtc,
+            snapshot.DeadlineAtUtc,
+            snapshot.LastSeenAtUtc,
+            snapshot.SubmittedAtUtc);
+
+    private static AttemptExecutionStateResponse MapExecutionStateResponse(AttemptExecutionStateSnapshot snapshot) =>
+        new(
             snapshot.AttemptId,
             snapshot.ExamId,
             snapshot.Status,
@@ -128,7 +246,4 @@ public static class AttemptEndpoints
                             option.DisplayOrder))
                         .ToArray()))
                 .ToArray());
-
-        return TypedResults.Ok(response);
-    }
 }

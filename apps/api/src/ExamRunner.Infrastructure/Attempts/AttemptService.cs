@@ -46,14 +46,68 @@ public sealed class AttemptService(ExamRunnerDbContext dbContext, TimeProvider t
 
     public async Task<AttemptExecutionStateSnapshot?> GetExecutionStateAsync(Guid attemptId, CancellationToken cancellationToken = default)
     {
+        var attempt = await LoadAttemptGraphAsync(attemptId, asNoTracking: true, cancellationToken);
+
+        return attempt is null ? null : BuildExecutionStateSnapshot(attempt);
+    }
+
+    public async Task<AttemptExecutionStateSnapshot?> SaveAnswerAsync(SaveAttemptAnswerCommand command, CancellationToken cancellationToken = default)
+    {
+        var attempt = await LoadAttemptGraphAsync(command.AttemptId, asNoTracking: false, cancellationToken);
+
+        if (attempt is null)
+        {
+            return null;
+        }
+
+        if (attempt.Status != AttemptStatuses.InProgress)
+        {
+            throw new InvalidOperationException("Only attempts in progress can accept answers.");
+        }
+
+        var question = attempt.Exam.Sections
+            .SelectMany(section => section.Questions)
+            .SingleOrDefault(question => question.Id == command.QuestionId);
+
+        if (question is null)
+        {
+            throw new ArgumentException("Question does not belong to this attempt.", nameof(command.QuestionId));
+        }
+
+        if (command.SelectedOptionId.HasValue && question.Options.All(option => option.Id != command.SelectedOptionId.Value))
+        {
+            throw new ArgumentException("Selected option does not belong to this question.", nameof(command.SelectedOptionId));
+        }
+
+        var now = timeProvider.GetUtcNow();
+        var existingAnswer = attempt.Answers.SingleOrDefault(answer => answer.QuestionId == command.QuestionId);
+
+        if (existingAnswer is null)
+        {
+            attempt.Answers.Add(new AttemptAnswerEntity
+            {
+                Id = Guid.NewGuid(),
+                AttemptId = attempt.Id,
+                QuestionId = command.QuestionId,
+                SelectedOptionId = command.SelectedOptionId,
+                UpdatedAtUtc = now
+            });
+        }
+        else
+        {
+            existingAnswer.SelectedOptionId = command.SelectedOptionId;
+            existingAnswer.UpdatedAtUtc = now;
+        }
+
+        attempt.LastSeenAtUtc = now;
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return BuildExecutionStateSnapshot(attempt);
+    }
+
+    public async Task<AttemptSnapshot?> SubmitAsync(Guid attemptId, CancellationToken cancellationToken = default)
+    {
         var attempt = await dbContext.Attempts
-            .AsNoTracking()
-            .Include(x => x.Answers)
-            .Include(x => x.Exam)
-                .ThenInclude(x => x.Sections)
-                    .ThenInclude(x => x.Questions)
-                        .ThenInclude(x => x.Options)
-            .AsSplitQuery()
             .SingleOrDefaultAsync(x => x.Id == attemptId, cancellationToken);
 
         if (attempt is null)
@@ -61,6 +115,49 @@ public sealed class AttemptService(ExamRunnerDbContext dbContext, TimeProvider t
             return null;
         }
 
+        if (attempt.Status != AttemptStatuses.InProgress)
+        {
+            throw new InvalidOperationException("Only attempts in progress can be submitted.");
+        }
+
+        var now = timeProvider.GetUtcNow();
+        attempt.Status = AttemptStatuses.Submitted;
+        attempt.SubmittedAtUtc = now;
+        attempt.LastSeenAtUtc = now;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return new AttemptSnapshot(
+            attempt.Id,
+            attempt.ExamId,
+            attempt.Status,
+            attempt.StartedAtUtc,
+            attempt.DeadlineAtUtc,
+            attempt.LastSeenAtUtc,
+            attempt.SubmittedAtUtc);
+    }
+
+    private async Task<AttemptEntity?> LoadAttemptGraphAsync(Guid attemptId, bool asNoTracking, CancellationToken cancellationToken)
+    {
+        IQueryable<AttemptEntity> query = dbContext.Attempts;
+
+        if (asNoTracking)
+        {
+            query = query.AsNoTracking();
+        }
+
+        return await query
+            .Include(x => x.Answers)
+            .Include(x => x.Exam)
+                .ThenInclude(x => x.Sections)
+                    .ThenInclude(x => x.Questions)
+                        .ThenInclude(x => x.Options)
+            .AsSplitQuery()
+            .SingleOrDefaultAsync(x => x.Id == attemptId, cancellationToken);
+    }
+
+    private AttemptExecutionStateSnapshot BuildExecutionStateSnapshot(AttemptEntity attempt)
+    {
         var selectedOptionsByQuestionId = attempt.Answers
             .GroupBy(x => x.QuestionId)
             .ToDictionary(group => group.Key, group => group.OrderByDescending(answer => answer.UpdatedAtUtc).First().SelectedOptionId);
