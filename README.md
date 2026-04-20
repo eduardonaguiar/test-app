@@ -41,6 +41,7 @@ pnpm api:build
 pnpm api:test
 pnpm compose:up
 pnpm compose:down
+pnpm contracts:generate
 ```
 
 > Nesta etapa os pacotes possuem scripts placeholder para validar o setup do workspace.
@@ -53,7 +54,7 @@ O arquivo `docker-compose.yml` na raiz sobe os dois serviços necessários para 
 
 - `web` (Vite): `http://localhost:5173`
 - `api` (ASP.NET Core): `http://localhost:8080`
-- `health` da API: `http://localhost:8080/health`
+- `health` da API: `http://localhost:8080/api/health`
 
 ### Comunicação entre serviços
 
@@ -92,6 +93,7 @@ Ou via script:
 
 ```bash
 pnpm compose:down
+pnpm contracts:generate
 ```
 
 ## Objetivo desta etapa (Task 0.1)
@@ -100,3 +102,12 @@ pnpm compose:down
 - [x] install na raiz funcionando
 - [x] estrutura inicial criada
 - [x] README inicial criado
+
+## Contratos HTTP compartilhados (OpenAPI -> frontend)
+
+- Fonte do contrato OpenAPI: `contracts/openapi/exam-runner.openapi.json`.
+- Exportação do contrato via backend: `pnpm api:openapi` (script `scripts/export-openapi.sh`).
+- Geração do client/tipos TypeScript: `pnpm web:api:generate` (gera `apps/web/src/generated/api-contract.ts`).
+- Pipeline completo: `pnpm contracts:generate`.
+
+Essa abordagem evita duplicação manual de contratos HTTP entre .NET e React/TypeScript.

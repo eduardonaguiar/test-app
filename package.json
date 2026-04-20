@@ -13,6 +13,9 @@
     "api:build": "dotnet build apps/api/ExamRunner.sln",
     "api:test": "dotnet test apps/api/ExamRunner.sln",
     "api:lint": "dotnet format apps/api/ExamRunner.sln --verify-no-changes",
+    "api:openapi": "bash ./scripts/export-openapi.sh",
+    "web:api:generate": "pnpm --filter @exam-runner/web run generate:api",
+    "contracts:generate": "pnpm api:openapi && pnpm web:api:generate",
     "compose:up": "docker compose up --build",
     "compose:down": "docker compose down"
   }
