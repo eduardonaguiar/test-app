@@ -4,7 +4,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ExamRunner.Infrastructure.Attempts;
 
-public sealed class AttemptService(ExamRunnerDbContext dbContext, TimeProvider timeProvider) : IAttemptService
+public sealed class AttemptService(
+    ExamRunnerDbContext dbContext,
+    TimeProvider timeProvider,
+    IAttemptScoringService? attemptScoringService = null) : IAttemptService
 {
     public async Task<AttemptSnapshot> CreateAsync(CreateAttemptCommand command, CancellationToken cancellationToken = default)
     {
@@ -214,7 +217,7 @@ public sealed class AttemptService(ExamRunnerDbContext dbContext, TimeProvider t
         attempt.SubmittedAtUtc = now;
         attempt.LastSeenAtUtc = now;
 
-        var scoredResult = BuildScoredResult(attempt, now);
+        var scoredResult = BuildScoredResult(attempt, now, attemptScoringService ?? new ObjectiveAttemptScoringService());
 
         if (attempt.Result is null)
         {
@@ -243,54 +246,38 @@ public sealed class AttemptService(ExamRunnerDbContext dbContext, TimeProvider t
             attempt.SubmittedAtUtc);
     }
 
-    private static AttemptResultEntity BuildScoredResult(AttemptEntity attempt, DateTimeOffset evaluatedAtUtc)
+    private static AttemptResultEntity BuildScoredResult(
+        AttemptEntity attempt,
+        DateTimeOffset evaluatedAtUtc,
+        IAttemptScoringService scoringService)
     {
-        var questions = attempt.Exam.Sections
+        var objectiveQuestions = attempt.Exam.Sections
             .SelectMany(section => section.Questions)
+            .Select(question => new ObjectiveQuestionForScoring(
+                question.Id,
+                question.Topic,
+                question.Options.Single(option => option.IsCorrect).Id))
             .ToList();
 
-        var answerByQuestionId = attempt.Answers
-            .GroupBy(answer => answer.QuestionId)
-            .ToDictionary(group => group.Key, group => group.Last());
+        var objectiveAnswers = attempt.Answers
+            .Select(answer => new ObjectiveAnswerForScoring(answer.QuestionId, answer.SelectedOptionId))
+            .ToArray();
 
-        var totalQuestions = questions.Count;
-        var correctAnswers = 0;
-        var incorrectAnswers = 0;
-
-        foreach (var question in questions)
-        {
-            if (!answerByQuestionId.TryGetValue(question.Id, out var answer) || !answer.SelectedOptionId.HasValue)
-            {
-                continue;
-            }
-
-            var isCorrect = question.Options.Any(option => option.Id == answer.SelectedOptionId.Value && option.IsCorrect);
-
-            if (isCorrect)
-            {
-                correctAnswers++;
-            }
-            else
-            {
-                incorrectAnswers++;
-            }
-        }
-
-        var unansweredQuestions = totalQuestions - correctAnswers - incorrectAnswers;
-        var scorePercentage = totalQuestions == 0
-            ? 0m
-            : Math.Round((decimal)correctAnswers * 100m / totalQuestions, 2, MidpointRounding.AwayFromZero);
+        var scoreResult = scoringService.ScoreObjectiveAttempt(
+            objectiveQuestions,
+            objectiveAnswers,
+            attempt.Exam.PassingScorePercentage);
 
         return new AttemptResultEntity
         {
             Id = Guid.NewGuid(),
             AttemptId = attempt.Id,
-            TotalQuestions = totalQuestions,
-            CorrectAnswers = correctAnswers,
-            IncorrectAnswers = incorrectAnswers,
-            UnansweredQuestions = unansweredQuestions,
-            ScorePercentage = scorePercentage,
-            Passed = scorePercentage >= attempt.Exam.PassingScorePercentage,
+            TotalQuestions = scoreResult.TotalQuestions,
+            CorrectAnswers = scoreResult.CorrectAnswers,
+            IncorrectAnswers = scoreResult.IncorrectAnswers,
+            UnansweredQuestions = scoreResult.UnansweredQuestions,
+            ScorePercentage = scoreResult.ScorePercentage,
+            Passed = scoreResult.Passed,
             EvaluatedAtUtc = evaluatedAtUtc
         };
     }
