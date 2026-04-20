@@ -1,38 +1,30 @@
 import { useEffect, useState } from 'react';
-import { getHealth, listExams } from '../generated/api-contract';
+import { Link } from 'react-router-dom';
+import type { ListExamsResponse } from '../generated/api-contract';
+import { listExams } from '../generated/api-contract';
 
-type DashboardState = {
-  healthStatus: string;
-  checkedAt: string;
-  examCount: number;
+type ExamsState = {
+  exams: ListExamsResponse['items'];
 };
 
 export function HomePage() {
-  const [state, setState] = useState<DashboardState | null>(null);
+  const [state, setState] = useState<ExamsState | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
 
-    async function loadDashboard() {
-      const [healthResult, examsResult] = await Promise.all([
-        getHealth(controller.signal),
-        listExams(controller.signal),
-      ]);
-
-      setState({
-        healthStatus: healthResult.status,
-        checkedAt: healthResult.timestamp,
-        examCount: examsResult.items.length,
-      });
+    async function loadExams() {
+      const examsResult = await listExams(controller.signal);
+      setState({ exams: examsResult.items });
     }
 
-    loadDashboard().catch((error) => {
+    loadExams().catch((error) => {
       if (error instanceof DOMException && error.name === 'AbortError') {
         return;
       }
 
-      setErrorMessage('Unable to load backend API contract data.');
+      setErrorMessage('Não foi possível carregar as provas importadas da API.');
     });
 
     return () => {
@@ -42,33 +34,48 @@ export function HomePage() {
 
   return (
     <main className="page">
-      <h1>Exam Runner</h1>
-      <p className="subtitle">Local-first study exam simulator</p>
+      <h1>Provas importadas</h1>
+      <p className="subtitle">Listagem carregada diretamente do backend.</p>
 
-      <section className="status-card" aria-label="API health status">
-        <h2>Backend Contract Status</h2>
+      {errorMessage ? (
+        <p>{errorMessage}</p>
+      ) : state ? (
+        <section aria-label="Lista de provas" className="exam-list">
+          {state.exams.length === 0 ? (
+            <p>Nenhuma prova importada até o momento.</p>
+          ) : (
+            state.exams.map((exam) => (
+              <article key={exam.examId} className="exam-card">
+                <header>
+                  <h2>{exam.title}</h2>
+                  <p className="exam-description">{exam.description ?? 'Sem descrição informada.'}</p>
+                </header>
 
-        {errorMessage ? (
-          <p>{errorMessage}</p>
-        ) : state ? (
-          <dl>
-            <div>
-              <dt>Health</dt>
-              <dd>{state.healthStatus}</dd>
-            </div>
-            <div>
-              <dt>Checked at</dt>
-              <dd>{new Date(state.checkedAt).toLocaleString()}</dd>
-            </div>
-            <div>
-              <dt>Exam contracts</dt>
-              <dd>{state.examCount}</dd>
-            </div>
-          </dl>
-        ) : (
-          <p>Loading API contract data…</p>
-        )}
-      </section>
+                <dl className="exam-metadata">
+                  <div>
+                    <dt>Duração</dt>
+                    <dd>{exam.durationMinutes} min</dd>
+                  </div>
+                  <div>
+                    <dt>Passing score</dt>
+                    <dd>{exam.passingScorePercentage}%</dd>
+                  </div>
+                  <div>
+                    <dt>Questões</dt>
+                    <dd>{exam.questionCount ?? '—'}</dd>
+                  </div>
+                </dl>
+
+                <Link className="details-button" to={`/exams/${exam.examId}`}>
+                  Abrir detalhes
+                </Link>
+              </article>
+            ))
+          )}
+        </section>
+      ) : (
+        <p>Carregando provas…</p>
+      )}
     </main>
   );
 }

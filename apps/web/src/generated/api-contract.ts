@@ -11,8 +11,10 @@ export type ExamSummaryResponse =
 {
   examId: string;
   title: string;
+  description?: string;
   durationMinutes: number;
   passingScorePercentage: number;
+  questionCount?: number;
 };
 export type ListExamsResponse = 
 {
