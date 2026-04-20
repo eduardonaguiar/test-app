@@ -46,9 +46,22 @@ public sealed class AttemptService(ExamRunnerDbContext dbContext, TimeProvider t
 
     public async Task<AttemptExecutionStateSnapshot?> GetExecutionStateAsync(Guid attemptId, CancellationToken cancellationToken = default)
     {
-        var attempt = await LoadAttemptGraphAsync(attemptId, asNoTracking: true, cancellationToken);
+        var attempt = await LoadAttemptGraphAsync(attemptId, asNoTracking: false, cancellationToken);
 
-        return attempt is null ? null : BuildExecutionStateSnapshot(attempt);
+        if (attempt is null)
+        {
+            return null;
+        }
+
+        var now = timeProvider.GetUtcNow();
+        var hasTimelineTransition = UpdateAttemptStatusFromTimeline(attempt, now);
+
+        if (hasTimelineTransition)
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        return BuildExecutionStateSnapshot(attempt, now);
     }
 
     public async Task<AttemptExecutionStateSnapshot?> SaveAnswerAsync(SaveAttemptAnswerCommand command, CancellationToken cancellationToken = default)
@@ -58,6 +71,14 @@ public sealed class AttemptService(ExamRunnerDbContext dbContext, TimeProvider t
         if (attempt is null)
         {
             return null;
+        }
+
+        var now = timeProvider.GetUtcNow();
+        var hasTimelineTransition = UpdateAttemptStatusFromTimeline(attempt, now);
+
+        if (hasTimelineTransition)
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
         }
 
         if (attempt.Status != AttemptStatuses.InProgress)
@@ -79,7 +100,6 @@ public sealed class AttemptService(ExamRunnerDbContext dbContext, TimeProvider t
             throw new ArgumentException("Selected option does not belong to this question.", nameof(command.SelectedOptionId));
         }
 
-        var now = timeProvider.GetUtcNow();
         var existingAnswer = attempt.Answers.SingleOrDefault(answer => answer.QuestionId == command.QuestionId);
 
         if (existingAnswer is null)
@@ -102,7 +122,7 @@ public sealed class AttemptService(ExamRunnerDbContext dbContext, TimeProvider t
         attempt.LastSeenAtUtc = now;
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return BuildExecutionStateSnapshot(attempt);
+        return BuildExecutionStateSnapshot(attempt, now);
     }
 
     public async Task<AttemptSnapshot?> SubmitAsync(Guid attemptId, CancellationToken cancellationToken = default)
@@ -115,12 +135,19 @@ public sealed class AttemptService(ExamRunnerDbContext dbContext, TimeProvider t
             return null;
         }
 
+        var now = timeProvider.GetUtcNow();
+        var hasTimelineTransition = UpdateAttemptStatusFromTimeline(attempt, now);
+
+        if (hasTimelineTransition)
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
         if (attempt.Status != AttemptStatuses.InProgress)
         {
             throw new InvalidOperationException("Only attempts in progress can be submitted.");
         }
 
-        var now = timeProvider.GetUtcNow();
         attempt.Status = AttemptStatuses.Submitted;
         attempt.SubmittedAtUtc = now;
         attempt.LastSeenAtUtc = now;
@@ -156,7 +183,26 @@ public sealed class AttemptService(ExamRunnerDbContext dbContext, TimeProvider t
             .SingleOrDefaultAsync(x => x.Id == attemptId, cancellationToken);
     }
 
-    private AttemptExecutionStateSnapshot BuildExecutionStateSnapshot(AttemptEntity attempt)
+    private static bool UpdateAttemptStatusFromTimeline(AttemptEntity attempt, DateTimeOffset now)
+    {
+        if (attempt.Status != AttemptStatuses.InProgress)
+        {
+            return false;
+        }
+
+        if (now < attempt.DeadlineAtUtc)
+        {
+            return false;
+        }
+
+        attempt.Status = AttemptStatuses.Finalized;
+        attempt.SubmittedAtUtc ??= attempt.DeadlineAtUtc;
+        attempt.LastSeenAtUtc = now;
+
+        return true;
+    }
+
+    private AttemptExecutionStateSnapshot BuildExecutionStateSnapshot(AttemptEntity attempt, DateTimeOffset now)
     {
         var selectedOptionsByQuestionId = attempt.Answers
             .GroupBy(x => x.QuestionId)
@@ -194,7 +240,7 @@ public sealed class AttemptService(ExamRunnerDbContext dbContext, TimeProvider t
 
         var answeredQuestionCount = questions.Count(question => question.IsAnswered);
         var pendingQuestionCount = questions.Length - answeredQuestionCount;
-        var remainingSeconds = (int)Math.Max(0, Math.Floor((attempt.DeadlineAtUtc - timeProvider.GetUtcNow()).TotalSeconds));
+        var remainingSeconds = (int)Math.Max(0, Math.Floor((attempt.DeadlineAtUtc - now).TotalSeconds));
 
         return new AttemptExecutionStateSnapshot(
             attempt.Id,

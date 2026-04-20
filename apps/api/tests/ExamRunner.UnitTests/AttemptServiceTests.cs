@@ -669,6 +669,208 @@ public sealed class AttemptServiceTests
         }
     }
 
+    [Fact]
+    public async Task GetExecutionStateAsync_WhenDeadlineHasPassed_ShouldFinalizeAttemptFromBackendTimeline()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<ExamRunnerDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        var now = new DateTimeOffset(2026, 4, 20, 12, 0, 0, TimeSpan.Zero);
+        var examId = Guid.NewGuid();
+        var attemptId = Guid.NewGuid();
+        var sectionId = Guid.NewGuid();
+        var questionId = Guid.NewGuid();
+        var optionId = Guid.NewGuid();
+
+        await using (var seedContext = new ExamRunnerDbContext(options))
+        {
+            await seedContext.Database.EnsureCreatedAsync();
+
+            seedContext.Exams.Add(new ExamEntity
+            {
+                Id = examId,
+                Title = "Exam",
+                Description = "Desc",
+                DurationMinutes = 30,
+                PassingScorePercentage = 70,
+                SchemaVersion = "1.0.0",
+                Sections =
+                [
+                    new ExamSectionEntity
+                    {
+                        Id = sectionId,
+                        Title = "Section A",
+                        SectionCode = "SEC-A",
+                        DisplayOrder = 1,
+                        QuestionCount = 1,
+                        Questions =
+                        [
+                            new QuestionEntity
+                            {
+                                Id = questionId,
+                                QuestionCode = "Q-1",
+                                Prompt = "Pergunta 1",
+                                DisplayOrder = 1,
+                                ExplanationSummary = "Resumo",
+                                ExplanationDetails = "Detalhe",
+                                Topic = "Topic",
+                                Difficulty = "easy",
+                                Weight = 1m,
+                                Options =
+                                [
+                                    new QuestionOptionEntity
+                                    {
+                                        Id = optionId,
+                                        OptionCode = "A",
+                                        Text = "Opção A",
+                                        DisplayOrder = 1
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            });
+
+            seedContext.Attempts.Add(new AttemptEntity
+            {
+                Id = attemptId,
+                ExamId = examId,
+                Status = AttemptStatuses.InProgress,
+                StartedAtUtc = now.AddMinutes(-45),
+                DeadlineAtUtc = now.AddMinutes(-15),
+                LastSeenAtUtc = now.AddMinutes(-20)
+            });
+
+            await seedContext.SaveChangesAsync();
+        }
+
+        AttemptExecutionStateSnapshot? snapshot;
+        await using (var actContext = new ExamRunnerDbContext(options))
+        {
+            var sut = new AttemptService(actContext, new FrozenTimeProvider(now));
+            snapshot = await sut.GetExecutionStateAsync(attemptId, CancellationToken.None);
+        }
+
+        snapshot.Should().NotBeNull();
+        snapshot!.Status.Should().Be(AttemptStatuses.Finalized);
+        snapshot.RemainingSeconds.Should().Be(0);
+        snapshot.SubmittedAtUtc.Should().Be(now.AddMinutes(-15));
+
+        await using (var assertContext = new ExamRunnerDbContext(options))
+        {
+            var persistedAttempt = await assertContext.Attempts.SingleAsync(x => x.Id == attemptId);
+            persistedAttempt.Status.Should().Be(AttemptStatuses.Finalized);
+            persistedAttempt.SubmittedAtUtc.Should().Be(now.AddMinutes(-15));
+            persistedAttempt.LastSeenAtUtc.Should().Be(now);
+        }
+    }
+
+    [Fact]
+    public async Task SaveAnswerAsync_WhenDeadlineHasPassed_ShouldFinalizeAndRejectChanges()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<ExamRunnerDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        var now = new DateTimeOffset(2026, 4, 20, 12, 0, 0, TimeSpan.Zero);
+        var examId = Guid.NewGuid();
+        var attemptId = Guid.NewGuid();
+        var sectionId = Guid.NewGuid();
+        var questionId = Guid.NewGuid();
+        var optionId = Guid.NewGuid();
+
+        await using (var seedContext = new ExamRunnerDbContext(options))
+        {
+            await seedContext.Database.EnsureCreatedAsync();
+
+            seedContext.Exams.Add(new ExamEntity
+            {
+                Id = examId,
+                Title = "Exam",
+                Description = "Desc",
+                DurationMinutes = 30,
+                PassingScorePercentage = 70,
+                SchemaVersion = "1.0.0",
+                Sections =
+                [
+                    new ExamSectionEntity
+                    {
+                        Id = sectionId,
+                        Title = "Section A",
+                        SectionCode = "SEC-A",
+                        DisplayOrder = 1,
+                        QuestionCount = 1,
+                        Questions =
+                        [
+                            new QuestionEntity
+                            {
+                                Id = questionId,
+                                QuestionCode = "Q-1",
+                                Prompt = "Pergunta 1",
+                                DisplayOrder = 1,
+                                ExplanationSummary = "Resumo",
+                                ExplanationDetails = "Detalhe",
+                                Topic = "Topic",
+                                Difficulty = "easy",
+                                Weight = 1m,
+                                Options =
+                                [
+                                    new QuestionOptionEntity
+                                    {
+                                        Id = optionId,
+                                        OptionCode = "A",
+                                        Text = "Opção A",
+                                        DisplayOrder = 1
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            });
+
+            seedContext.Attempts.Add(new AttemptEntity
+            {
+                Id = attemptId,
+                ExamId = examId,
+                Status = AttemptStatuses.InProgress,
+                StartedAtUtc = now.AddMinutes(-45),
+                DeadlineAtUtc = now.AddMinutes(-1),
+                LastSeenAtUtc = now.AddMinutes(-2)
+            });
+
+            await seedContext.SaveChangesAsync();
+        }
+
+        await using (var actContext = new ExamRunnerDbContext(options))
+        {
+            var sut = new AttemptService(actContext, new FrozenTimeProvider(now));
+            var action = () => sut.SaveAnswerAsync(new SaveAttemptAnswerCommand(attemptId, questionId, optionId), CancellationToken.None);
+
+            await action.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("Only attempts in progress can accept answers.");
+        }
+
+        await using (var assertContext = new ExamRunnerDbContext(options))
+        {
+            var persistedAttempt = await assertContext.Attempts.SingleAsync(x => x.Id == attemptId);
+            persistedAttempt.Status.Should().Be(AttemptStatuses.Finalized);
+            persistedAttempt.SubmittedAtUtc.Should().Be(now.AddMinutes(-1));
+            persistedAttempt.LastSeenAtUtc.Should().Be(now);
+
+            var persistedAnswers = await assertContext.AttemptAnswers.ToListAsync();
+            persistedAnswers.Should().BeEmpty();
+        }
+    }
+
     private sealed class FrozenTimeProvider(DateTimeOffset now) : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => now;
