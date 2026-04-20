@@ -1,5 +1,7 @@
+using System.Text.Json;
 using ExamRunner.Api.Contracts.Errors;
 using ExamRunner.Api.Contracts.Exams;
+using ExamRunner.Infrastructure.Import;
 using ExamRunner.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
@@ -10,6 +12,15 @@ public static class ExamEndpoints
 {
     public static IEndpointRouteBuilder MapExamEndpoints(this IEndpointRouteBuilder app)
     {
+        app.MapPost("/exams/import", ImportExam)
+            .WithName("ImportExam")
+            .WithTags("Exams")
+            .WithSummary("Importa uma prova em JSON validando contra o schema oficial")
+            .Accepts<JsonElement>("application/json")
+            .Produces<ImportExamResponse>(StatusCodes.Status201Created)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
+
         app.MapGet("/exams", ListExams)
             .WithName("ListExams")
             .WithTags("Exams")
@@ -26,6 +37,42 @@ public static class ExamEndpoints
             .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         return app;
+    }
+
+    private static async Task<Results<Created<ImportExamResponse>, BadRequest<ProblemDetails>>> ImportExam(
+        JsonElement payload,
+        IExamImportService importService,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var rawJson = payload.GetRawText();
+            var result = await importService.ImportAsync(rawJson, cancellationToken);
+
+            var response = new ImportExamResponse(result.ExamId, result.Title, result.SectionCount, result.QuestionCount);
+            return TypedResults.Created($"/api/exams/{result.ExamId}", response);
+        }
+        catch (ExamImportException ex)
+        {
+            var problem = new ProblemDetails
+            {
+                Title = "Exam import failed",
+                Detail = ex.Message,
+                Status = StatusCodes.Status400BadRequest,
+                Type = $"https://httpstatuses.com/{StatusCodes.Status400BadRequest}"
+            };
+
+            problem.Extensions["code"] = ex.ErrorCode;
+            problem.Extensions["errors"] = ex.Errors
+                .Select(error => new
+                {
+                    path = error.Path,
+                    message = error.Message
+                })
+                .ToArray();
+
+            return TypedResults.BadRequest(problem);
+        }
     }
 
     private static async Task<Ok<ListExamsResponse>> ListExams(

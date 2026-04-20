@@ -21,3 +21,5 @@ public sealed record ExamDetailResponse(
     int PassingScorePercentage,
     string SchemaVersion,
     IReadOnlyList<ExamSectionResponse> Sections);
+
+public sealed record ImportExamResponse(Guid ExamId, string Title, int SectionCount, int QuestionCount);
