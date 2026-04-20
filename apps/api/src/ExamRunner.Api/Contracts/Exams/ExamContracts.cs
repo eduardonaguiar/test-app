@@ -3,8 +3,13 @@ namespace ExamRunner.Api.Contracts.Exams;
 public sealed record ExamSummaryResponse(
     Guid ExamId,
     string Title,
+    string Description,
     int DurationMinutes,
-    int PassingScorePercentage);
+    int PassingScorePercentage,
+    string SchemaVersion,
+    bool ReconnectEnabled,
+    int SectionCount,
+    int QuestionCount);
 
 public sealed record ListExamsResponse(IReadOnlyList<ExamSummaryResponse> Items);
 

@@ -6,11 +6,22 @@ namespace ExamRunner.Infrastructure.Repositories;
 
 public sealed class ExamReadRepository(ExamRunnerDbContext dbContext) : IExamReadRepository
 {
-    public async Task<IReadOnlyList<ExamEntity>> ListAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<ExamCatalogItem>> ListAsync(CancellationToken cancellationToken = default)
     {
         return await dbContext.Exams
             .AsNoTracking()
+            .Select(exam => new ExamCatalogItem(
+                exam.Id,
+                exam.Title,
+                exam.Description,
+                exam.DurationMinutes,
+                exam.PassingScorePercentage,
+                exam.SchemaVersion,
+                exam.ReconnectEnabled,
+                exam.Sections.Count,
+                exam.Sections.SelectMany(section => section.Questions).Count()))
             .OrderBy(x => x.Title)
+            .ThenBy(x => x.ExamId)
             .ToListAsync(cancellationToken);
     }
 
