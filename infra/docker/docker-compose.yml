@@ -1,14 +1,30 @@
 services:
   web:
-    image: node:22-alpine
+    build:
+      context: ../../
+      dockerfile: apps/web/Dockerfile
     working_dir: /workspace
-    command: sh -c "echo 'web container placeholder' && tail -f /dev/null"
+    command: sh -c "pnpm install --frozen-lockfile && pnpm --filter @exam-runner/web dev --host 0.0.0.0 --port 5173"
+    ports:
+      - "5173:5173"
     volumes:
       - ../../:/workspace
+      - web-node-modules:/workspace/node_modules
+      - web-pnpm-store:/root/.local/share/pnpm/store
 
   api:
-    image: mcr.microsoft.com/dotnet/sdk:8.0
+    build:
+      context: ../../
+      dockerfile: apps/api/Dockerfile
     working_dir: /workspace
-    command: sh -c "echo 'api container placeholder' && tail -f /dev/null"
+    command: sh -c "dotnet restore apps/api/ExamRunner.sln && dotnet watch --project apps/api/src/ExamRunner.Api run --urls http://0.0.0.0:8080"
+    ports:
+      - "8080:8080"
     volumes:
       - ../../:/workspace
+      - api-nuget:/root/.nuget/packages
+
+volumes:
+  web-node-modules:
+  web-pnpm-store:
+  api-nuget:
