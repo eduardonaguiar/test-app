@@ -1064,6 +1064,71 @@ public sealed class AttemptServiceTests
         }
     }
 
+    [Fact]
+    public async Task ReconnectAsync_WhenReconnectPolicyIsDisabled_ShouldStillPersistAuditEvent()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<ExamRunnerDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        var now = new DateTimeOffset(2026, 4, 20, 12, 0, 0, TimeSpan.Zero);
+        var examId = Guid.NewGuid();
+        var attemptId = Guid.NewGuid();
+
+        await using (var seedContext = new ExamRunnerDbContext(options))
+        {
+            await seedContext.Database.EnsureCreatedAsync();
+            seedContext.Exams.Add(new ExamEntity
+            {
+                Id = examId,
+                Title = "Exam",
+                Description = "Desc",
+                DurationMinutes = 60,
+                PassingScorePercentage = 70,
+                SchemaVersion = "1.0.0",
+                ReconnectEnabled = false,
+                MaxReconnectAttempts = 0,
+                ReconnectGracePeriodSeconds = 0,
+                ReconnectTerminateIfExceeded = true
+            });
+            seedContext.Attempts.Add(new AttemptEntity
+            {
+                Id = attemptId,
+                ExamId = examId,
+                Status = AttemptStatuses.InProgress,
+                StartedAtUtc = now.AddMinutes(-10),
+                DeadlineAtUtc = now.AddMinutes(50),
+                LastSeenAtUtc = now.AddSeconds(-45)
+            });
+            await seedContext.SaveChangesAsync();
+        }
+
+        await using (var actContext = new ExamRunnerDbContext(options))
+        {
+            var sut = new AttemptService(actContext, new FrozenTimeProvider(now));
+            var snapshot = await sut.ReconnectAsync(attemptId, CancellationToken.None);
+            snapshot.Should().NotBeNull();
+            snapshot!.Status.Should().Be(AttemptStatuses.InProgress);
+            snapshot.LastSeenAtUtc.Should().Be(now);
+        }
+
+        await using (var assertContext = new ExamRunnerDbContext(options))
+        {
+            var events = await assertContext.ReconnectEvents
+                .Where(x => x.AttemptId == attemptId)
+                .OrderBy(x => x.SequenceNumber)
+                .ToListAsync();
+
+            events.Should().HaveCount(1);
+            events[0].OfflineDurationSeconds.Should().Be(45);
+            events[0].GracePeriodRespected.Should().BeTrue();
+            events[0].FinalizedAttempt.Should().BeFalse();
+        }
+    }
+
     private sealed class FrozenTimeProvider(DateTimeOffset now) : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => now;
