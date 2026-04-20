@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "bash -lc \"pnpm run dev:api & pnpm run dev:web\"",
     "build": "pnpm run build:js && pnpm run build:api",
-    "lint": "pnpm run lint:js && pnpm run lint:api",
+    "lint": "pnpm run format:check && pnpm run lint:js && pnpm run lint:api",
     "test": "pnpm run test:js && pnpm run test:api",
     "typecheck": "pnpm run typecheck:js && pnpm run typecheck:api",
     "compose:up": "docker compose up --build",
@@ -25,6 +25,12 @@
     "typecheck:api": "dotnet build apps/api/ExamRunner.sln --no-restore",
     "api:openapi": "bash ./scripts/export-openapi.sh",
     "web:api:generate": "pnpm --filter @exam-runner/web run generate:api",
-    "contracts:generate": "pnpm api:openapi && pnpm web:api:generate"
+    "contracts:generate": "pnpm api:openapi && pnpm web:api:generate",
+    "format": "pnpm run format:js && pnpm run format:api",
+    "format:check": "pnpm run format:check:js && pnpm run format:check:api",
+    "format:js": "pnpm --filter @exam-runner/web format",
+    "format:check:js": "pnpm --filter @exam-runner/web format:check",
+    "format:api": "dotnet format apps/api/ExamRunner.sln",
+    "format:check:api": "dotnet format apps/api/ExamRunner.sln --verify-no-changes"
   }
 }
