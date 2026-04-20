@@ -1457,6 +1457,221 @@ public sealed class AttemptServiceTests
         }
     }
 
+    [Fact]
+    public async Task GetResultAsync_WithSubmittedAttempt_ShouldReturnDetailedReviewAndTopicAnalysis()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<ExamRunnerDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        var now = new DateTimeOffset(2026, 4, 20, 15, 0, 0, TimeSpan.Zero);
+        var examId = Guid.NewGuid();
+        var attemptId = Guid.NewGuid();
+        var sectionId = Guid.NewGuid();
+        var questionAId = Guid.NewGuid();
+        var questionBId = Guid.NewGuid();
+        var optionA1Id = Guid.NewGuid();
+        var optionA2Id = Guid.NewGuid();
+        var optionB1Id = Guid.NewGuid();
+        var optionB2Id = Guid.NewGuid();
+
+        await using (var seedContext = new ExamRunnerDbContext(options))
+        {
+            await seedContext.Database.EnsureCreatedAsync();
+
+            seedContext.Exams.Add(new ExamEntity
+            {
+                Id = examId,
+                Title = "Exam",
+                Description = "Desc",
+                DurationMinutes = 60,
+                PassingScorePercentage = 70,
+                SchemaVersion = "1.0.0",
+                Sections =
+                [
+                    new ExamSectionEntity
+                    {
+                        Id = sectionId,
+                        Title = "Section A",
+                        SectionCode = "SEC-A",
+                        DisplayOrder = 1,
+                        QuestionCount = 2,
+                        Questions =
+                        [
+                            new QuestionEntity
+                            {
+                                Id = questionAId,
+                                QuestionCode = "Q-1",
+                                Prompt = "Pergunta 1",
+                                DisplayOrder = 1,
+                                ExplanationSummary = "Resumo A",
+                                ExplanationDetails = "Detalhe A",
+                                Topic = "Networking",
+                                Difficulty = "easy",
+                                Weight = 1m,
+                                Options =
+                                [
+                                    new QuestionOptionEntity { Id = optionA1Id, OptionCode = "A", Text = "Opção A", IsCorrect = true, DisplayOrder = 1 },
+                                    new QuestionOptionEntity { Id = optionA2Id, OptionCode = "B", Text = "Opção B", IsCorrect = false, DisplayOrder = 2 }
+                                ]
+                            },
+                            new QuestionEntity
+                            {
+                                Id = questionBId,
+                                QuestionCode = "Q-2",
+                                Prompt = "Pergunta 2",
+                                DisplayOrder = 2,
+                                ExplanationSummary = "Resumo B",
+                                ExplanationDetails = "Detalhe B",
+                                Topic = "Security",
+                                Difficulty = "easy",
+                                Weight = 1m,
+                                Options =
+                                [
+                                    new QuestionOptionEntity { Id = optionB1Id, OptionCode = "A", Text = "Opção A", IsCorrect = true, DisplayOrder = 1 },
+                                    new QuestionOptionEntity { Id = optionB2Id, OptionCode = "B", Text = "Opção B", IsCorrect = false, DisplayOrder = 2 }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            });
+
+            seedContext.Attempts.Add(new AttemptEntity
+            {
+                Id = attemptId,
+                ExamId = examId,
+                Status = AttemptStatuses.Submitted,
+                StartedAtUtc = now.AddMinutes(-30),
+                DeadlineAtUtc = now.AddMinutes(30),
+                LastSeenAtUtc = now.AddMinutes(-1),
+                SubmittedAtUtc = now,
+                Answers =
+                [
+                    new AttemptAnswerEntity
+                    {
+                        Id = Guid.NewGuid(),
+                        QuestionId = questionAId,
+                        SelectedOptionId = optionA1Id,
+                        UpdatedAtUtc = now
+                    },
+                    new AttemptAnswerEntity
+                    {
+                        Id = Guid.NewGuid(),
+                        QuestionId = questionBId,
+                        SelectedOptionId = optionB2Id,
+                        UpdatedAtUtc = now
+                    }
+                ],
+                Result = new AttemptResultEntity
+                {
+                    Id = Guid.NewGuid(),
+                    TotalQuestions = 2,
+                    CorrectAnswers = 1,
+                    IncorrectAnswers = 1,
+                    UnansweredQuestions = 0,
+                    ScorePercentage = 50m,
+                    Passed = false,
+                    EvaluatedAtUtc = now
+                }
+            });
+
+            await seedContext.SaveChangesAsync();
+        }
+
+        AttemptResultSnapshot? snapshot;
+        await using (var actContext = new ExamRunnerDbContext(options))
+        {
+            var sut = new AttemptService(actContext, new FrozenTimeProvider(now));
+            snapshot = await sut.GetResultAsync(attemptId, CancellationToken.None);
+        }
+
+        snapshot.Should().NotBeNull();
+        snapshot!.Score.Should().Be(1);
+        snapshot.Percentage.Should().Be(50m);
+        snapshot.Passed.Should().BeFalse();
+        snapshot.Outcome.Should().Be("reprovado");
+        snapshot.QuestionReviews.Should().HaveCount(2);
+
+        var questionAReview = snapshot.QuestionReviews.Single(review => review.QuestionId == questionAId);
+        questionAReview.UserSelectedOptionId.Should().Be(optionA1Id);
+        questionAReview.CorrectOptionId.Should().Be(optionA1Id);
+        questionAReview.IsCorrect.Should().BeTrue();
+        questionAReview.ExplanationSummary.Should().Be("Resumo A");
+        questionAReview.ExplanationDetails.Should().Be("Detalhe A");
+
+        var questionBReview = snapshot.QuestionReviews.Single(review => review.QuestionId == questionBId);
+        questionBReview.UserSelectedOptionId.Should().Be(optionB2Id);
+        questionBReview.CorrectOptionId.Should().Be(optionB1Id);
+        questionBReview.IsCorrect.Should().BeFalse();
+
+        snapshot.TopicAnalysis.Should().HaveCount(2);
+        snapshot.TopicAnalysis.Should().Contain(x =>
+            x.Topic == "Networking" &&
+            x.CorrectAnswers == 1 &&
+            x.IncorrectAnswers == 0 &&
+            x.ScorePercentage == 100m);
+        snapshot.TopicAnalysis.Should().Contain(x =>
+            x.Topic == "Security" &&
+            x.CorrectAnswers == 0 &&
+            x.IncorrectAnswers == 1 &&
+            x.ScorePercentage == 0m);
+    }
+
+    [Fact]
+    public async Task GetResultAsync_WithInProgressAttempt_ShouldReject()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<ExamRunnerDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        var now = new DateTimeOffset(2026, 4, 20, 16, 0, 0, TimeSpan.Zero);
+        var examId = Guid.NewGuid();
+        var attemptId = Guid.NewGuid();
+
+        await using (var seedContext = new ExamRunnerDbContext(options))
+        {
+            await seedContext.Database.EnsureCreatedAsync();
+
+            seedContext.Exams.Add(new ExamEntity
+            {
+                Id = examId,
+                Title = "Exam",
+                Description = "Desc",
+                DurationMinutes = 60,
+                PassingScorePercentage = 70,
+                SchemaVersion = "1.0.0"
+            });
+
+            seedContext.Attempts.Add(new AttemptEntity
+            {
+                Id = attemptId,
+                ExamId = examId,
+                Status = AttemptStatuses.InProgress,
+                StartedAtUtc = now.AddMinutes(-10),
+                DeadlineAtUtc = now.AddMinutes(50),
+                LastSeenAtUtc = now.AddMinutes(-1)
+            });
+
+            await seedContext.SaveChangesAsync();
+        }
+
+        await using (var actContext = new ExamRunnerDbContext(options))
+        {
+            var sut = new AttemptService(actContext, new FrozenTimeProvider(now));
+            var action = () => sut.GetResultAsync(attemptId, CancellationToken.None);
+
+            await action.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("Result is available only after submission.");
+        }
+    }
+
     private sealed class FrozenTimeProvider(DateTimeOffset now) : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => now;

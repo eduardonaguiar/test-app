@@ -42,3 +42,35 @@ public sealed record AttemptExecutionQuestionOptionSnapshot(
     string OptionCode,
     string Text,
     int DisplayOrder);
+
+public sealed record AttemptResultSnapshot(
+    Guid AttemptId,
+    Guid ExamId,
+    int Score,
+    decimal Percentage,
+    bool Passed,
+    string Outcome,
+    int TotalQuestions,
+    int CorrectAnswers,
+    int IncorrectAnswers,
+    int UnansweredQuestions,
+    DateTimeOffset SubmittedAtUtc,
+    DateTimeOffset EvaluatedAtUtc,
+    IReadOnlyList<AttemptResultQuestionReviewSnapshot> QuestionReviews,
+    IReadOnlyList<TopicScoreBreakdown> TopicAnalysis);
+
+public sealed record AttemptResultQuestionReviewSnapshot(
+    Guid QuestionId,
+    Guid SectionId,
+    string SectionTitle,
+    string QuestionCode,
+    string Prompt,
+    Guid? UserSelectedOptionId,
+    string? UserSelectedOptionCode,
+    string? UserSelectedOptionText,
+    Guid CorrectOptionId,
+    string CorrectOptionCode,
+    string CorrectOptionText,
+    bool IsCorrect,
+    string ExplanationSummary,
+    string ExplanationDetails);

@@ -55,7 +55,54 @@ public static class AttemptEndpoints
             .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesProblem(StatusCodes.Status500InternalServerError);
 
+        app.MapGet("/attempts/{attemptId:guid}/result", GetAttemptResult)
+            .WithName("GetAttemptResult")
+            .WithTags("Attempts")
+            .WithSummary("Obtém o resultado completo de uma tentativa submetida")
+            .Produces<AttemptResultResponse>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
+
         return app;
+    }
+
+    private static async Task<Results<Ok<AttemptResultResponse>, NotFound<ProblemDetails>, Conflict<ProblemDetails>>> GetAttemptResult(
+        Guid attemptId,
+        IAttemptService attemptService,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await attemptService.GetResultAsync(attemptId, cancellationToken);
+
+            if (result is null)
+            {
+                var notFound = new ProblemDetails
+                {
+                    Title = "Attempt not found",
+                    Detail = $"Attempt with id '{attemptId}' was not found.",
+                    Status = StatusCodes.Status404NotFound,
+                    Type = $"https://httpstatuses.com/{StatusCodes.Status404NotFound}"
+                };
+                notFound.Extensions["code"] = ApiErrorCodes.NotFound;
+                return TypedResults.NotFound(notFound);
+            }
+
+            return TypedResults.Ok(MapAttemptResultResponse(result));
+        }
+        catch (InvalidOperationException ex)
+        {
+            var conflict = new ProblemDetails
+            {
+                Title = "Result not available",
+                Detail = ex.Message,
+                Status = StatusCodes.Status409Conflict,
+                Type = $"https://httpstatuses.com/{StatusCodes.Status409Conflict}"
+            };
+            conflict.Extensions["code"] = ApiErrorCodes.Conflict;
+            return TypedResults.Conflict(conflict);
+        }
     }
 
     private static async Task<Results<Ok<AttemptExecutionStateResponse>, NotFound<ProblemDetails>, Conflict<ProblemDetails>>> ReconnectAttempt(
@@ -318,5 +365,46 @@ public static class AttemptEndpoints
                             option.Text,
                             option.DisplayOrder))
                         .ToArray()))
+                .ToArray());
+
+    private static AttemptResultResponse MapAttemptResultResponse(AttemptResultSnapshot snapshot) =>
+        new(
+            snapshot.AttemptId,
+            snapshot.ExamId,
+            snapshot.Score,
+            snapshot.Percentage,
+            snapshot.Passed,
+            snapshot.Outcome,
+            snapshot.TotalQuestions,
+            snapshot.CorrectAnswers,
+            snapshot.IncorrectAnswers,
+            snapshot.UnansweredQuestions,
+            snapshot.SubmittedAtUtc,
+            snapshot.EvaluatedAtUtc,
+            snapshot.QuestionReviews
+                .Select(review => new AttemptResultQuestionReviewResponse(
+                    review.QuestionId,
+                    review.SectionId,
+                    review.SectionTitle,
+                    review.QuestionCode,
+                    review.Prompt,
+                    review.UserSelectedOptionId,
+                    review.UserSelectedOptionCode,
+                    review.UserSelectedOptionText,
+                    review.CorrectOptionId,
+                    review.CorrectOptionCode,
+                    review.CorrectOptionText,
+                    review.IsCorrect,
+                    review.ExplanationSummary,
+                    review.ExplanationDetails))
+                .ToArray(),
+            snapshot.TopicAnalysis
+                .Select(topic => new AttemptResultTopicAnalysisResponse(
+                    topic.Topic,
+                    topic.TotalQuestions,
+                    topic.CorrectAnswers,
+                    topic.IncorrectAnswers,
+                    topic.UnansweredQuestions,
+                    topic.ScorePercentage))
                 .ToArray());
 }
