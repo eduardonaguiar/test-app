@@ -83,10 +83,15 @@ public static class ExamEndpoints
 
         var items = exams
             .Select(exam => new ExamSummaryResponse(
-                ExamId: exam.Id,
+                ExamId: exam.ExamId,
                 Title: exam.Title,
+                Description: exam.Description,
                 DurationMinutes: exam.DurationMinutes,
-                PassingScorePercentage: exam.PassingScorePercentage))
+                PassingScorePercentage: exam.PassingScorePercentage,
+                SchemaVersion: exam.SchemaVersion,
+                ReconnectEnabled: exam.ReconnectEnabled,
+                SectionCount: exam.SectionCount,
+                QuestionCount: exam.QuestionCount))
             .ToArray();
 
         return TypedResults.Ok(new ListExamsResponse(items));
