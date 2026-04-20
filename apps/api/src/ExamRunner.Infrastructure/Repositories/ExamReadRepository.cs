@@ -29,7 +29,9 @@ public sealed class ExamReadRepository(ExamRunnerDbContext dbContext) : IExamRea
     {
         return await dbContext.Exams
             .AsNoTracking()
-            .Include(x => x.Sections.OrderBy(section => section.SectionCode))
+            .Include(exam => exam.Sections)
+                .ThenInclude(section => section.Questions)
+                    .ThenInclude(question => question.Options)
             .SingleOrDefaultAsync(x => x.Id == examId, cancellationToken);
     }
 }
