@@ -1,0 +1,14 @@
+{
+  "name": "@exam-runner/shared-types",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "echo 'TODO: build shared types'",
+    "test": "echo 'TODO: test shared types'",
+    "lint": "echo 'TODO: lint shared types'",
+    "typecheck": "echo 'TODO: typecheck shared types'"
+  }
+}

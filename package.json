@@ -1,0 +1,17 @@
+{
+  "name": "exam-runner-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.18.3",
+  "scripts": {
+    "dev": "pnpm -r --parallel --if-present dev",
+    "build": "pnpm -r --if-present build",
+    "test": "pnpm -r --if-present test",
+    "lint": "pnpm -r --if-present lint",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "api:build": "dotnet build apps/api",
+    "api:test": "dotnet test apps/api",
+    "compose:up": "docker compose -f infra/docker/docker-compose.yml up --build",
+    "compose:down": "docker compose -f infra/docker/docker-compose.yml down"
+  }
+}
