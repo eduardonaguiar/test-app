@@ -4,6 +4,7 @@ using ExamRunner.Infrastructure.Data.Entities;
 using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace ExamRunner.UnitTests;
 
@@ -1380,6 +1381,8 @@ public sealed class AttemptServiceTests
             attempt.Result.ScorePercentage.Should().Be(33.33m);
             attempt.Result.Passed.Should().BeFalse();
             attempt.Result.EvaluatedAtUtc.Should().Be(now);
+            attempt.Result.QuestionReviewsJson.Should().NotBeNullOrWhiteSpace();
+            attempt.Result.TopicAnalysisJson.Should().NotBeNullOrWhiteSpace();
         }
     }
 
@@ -1619,6 +1622,145 @@ public sealed class AttemptServiceTests
             x.CorrectAnswers == 0 &&
             x.IncorrectAnswers == 1 &&
             x.ScorePercentage == 0m);
+    }
+
+    [Fact]
+    public async Task GetResultAsync_WithPersistedReviewSnapshot_ShouldRemainStableForHistoricalReopen()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<ExamRunnerDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        var now = new DateTimeOffset(2026, 4, 20, 15, 30, 0, TimeSpan.Zero);
+        var examId = Guid.NewGuid();
+        var attemptId = Guid.NewGuid();
+        var sectionId = Guid.NewGuid();
+        var questionId = Guid.NewGuid();
+        var optionAId = Guid.NewGuid();
+        var optionBId = Guid.NewGuid();
+
+        var persistedReviews = new[]
+        {
+            new AttemptResultQuestionReviewSnapshot(
+                questionId,
+                sectionId,
+                "Section A",
+                "Q-1",
+                "Pergunta original",
+                optionAId,
+                "A",
+                "Resposta original",
+                optionAId,
+                "A",
+                "Resposta original",
+                true,
+                "Resumo original",
+                "Detalhe original")
+        };
+
+        var persistedTopics = new[]
+        {
+            new TopicScoreBreakdown("Networking", 1, 1, 0, 0, 100m)
+        };
+
+        await using (var seedContext = new ExamRunnerDbContext(options))
+        {
+            await seedContext.Database.EnsureCreatedAsync();
+
+            seedContext.Exams.Add(new ExamEntity
+            {
+                Id = examId,
+                Title = "Exam",
+                Description = "Desc",
+                DurationMinutes = 60,
+                PassingScorePercentage = 70,
+                SchemaVersion = "1.0.0",
+                Sections =
+                [
+                    new ExamSectionEntity
+                    {
+                        Id = sectionId,
+                        Title = "Section alterada",
+                        SectionCode = "SEC-A",
+                        DisplayOrder = 1,
+                        QuestionCount = 1,
+                        Questions =
+                        [
+                            new QuestionEntity
+                            {
+                                Id = questionId,
+                                QuestionCode = "Q-1",
+                                Prompt = "Pergunta alterada",
+                                DisplayOrder = 1,
+                                ExplanationSummary = "Resumo alterado",
+                                ExplanationDetails = "Detalhe alterado",
+                                Topic = "Cloud",
+                                Difficulty = "easy",
+                                Weight = 1m,
+                                Options =
+                                [
+                                    new QuestionOptionEntity { Id = optionAId, OptionCode = "A", Text = "Resposta alterada", IsCorrect = true, DisplayOrder = 1 },
+                                    new QuestionOptionEntity { Id = optionBId, OptionCode = "B", Text = "Distrator alterado", IsCorrect = false, DisplayOrder = 2 }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            });
+
+            seedContext.Attempts.Add(new AttemptEntity
+            {
+                Id = attemptId,
+                ExamId = examId,
+                Status = AttemptStatuses.Submitted,
+                StartedAtUtc = now.AddMinutes(-30),
+                DeadlineAtUtc = now.AddMinutes(30),
+                LastSeenAtUtc = now.AddMinutes(-1),
+                SubmittedAtUtc = now,
+                Answers =
+                [
+                    new AttemptAnswerEntity
+                    {
+                        Id = Guid.NewGuid(),
+                        QuestionId = questionId,
+                        SelectedOptionId = optionAId,
+                        UpdatedAtUtc = now
+                    }
+                ],
+                Result = new AttemptResultEntity
+                {
+                    Id = Guid.NewGuid(),
+                    TotalQuestions = 1,
+                    CorrectAnswers = 1,
+                    IncorrectAnswers = 0,
+                    UnansweredQuestions = 0,
+                    ScorePercentage = 100m,
+                    Passed = true,
+                    EvaluatedAtUtc = now,
+                    QuestionReviewsJson = JsonSerializer.Serialize(persistedReviews),
+                    TopicAnalysisJson = JsonSerializer.Serialize(persistedTopics)
+                }
+            });
+
+            await seedContext.SaveChangesAsync();
+        }
+
+        AttemptResultSnapshot? snapshot;
+        await using (var actContext = new ExamRunnerDbContext(options))
+        {
+            var sut = new AttemptService(actContext, new FrozenTimeProvider(now));
+            snapshot = await sut.GetResultAsync(attemptId, CancellationToken.None);
+        }
+
+        snapshot.Should().NotBeNull();
+        snapshot!.QuestionReviews.Should().HaveCount(1);
+        snapshot.QuestionReviews[0].Prompt.Should().Be("Pergunta original");
+        snapshot.QuestionReviews[0].ExplanationSummary.Should().Be("Resumo original");
+        snapshot.QuestionReviews[0].UserSelectedOptionText.Should().Be("Resposta original");
+        snapshot.TopicAnalysis.Should().ContainSingle(topic => topic.Topic == "Networking" && topic.ScorePercentage == 100m);
     }
 
     [Fact]
