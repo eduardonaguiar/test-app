@@ -9,7 +9,7 @@ public sealed class OfficialExamSchemaValidator(IHostEnvironment hostEnvironment
     {
         var schema = await LoadOfficialSchemaAsync(cancellationToken);
         return schema.Validate(rawJson)
-            .Select(error => new ExamImportValidationError(error.Path, error.ToString()))
+            .Select(error => new ExamImportValidationError(error.Path ?? string.Empty, error.ToString()))
             .ToArray();
     }
 
@@ -17,7 +17,9 @@ public sealed class OfficialExamSchemaValidator(IHostEnvironment hostEnvironment
     {
         var schemaPath = ResolveSchemaPath();
         await using var stream = File.OpenRead(schemaPath);
-        return await JsonSchema.FromStreamAsync(stream);
+        using var reader = new StreamReader(stream);
+        var schemaJson = await reader.ReadToEndAsync(cancellationToken);
+        return await JsonSchema.FromJsonAsync(schemaJson);
     }
 
     private string ResolveSchemaPath()
