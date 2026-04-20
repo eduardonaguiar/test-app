@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router-dom';
 import { AttemptExecutionPage } from './pages/AttemptExecutionPage';
 import { ExamDetailsPage } from './pages/ExamDetailsPage';
 import { HomePage } from './pages/HomePage';
+import { AttemptResultPage } from './pages/AttemptResultPage';
 
 function PlaceholderPage() {
   return (
@@ -18,6 +19,7 @@ export function App() {
       <Route path="/" element={<HomePage />} />
       <Route path="/exams/:examId" element={<ExamDetailsPage />} />
       <Route path="/attempts/:attemptId" element={<AttemptExecutionPage />} />
+      <Route path="/attempts/:attemptId/result" element={<AttemptResultPage />} />
       <Route path="*" element={<PlaceholderPage />} />
     </Routes>
   );
