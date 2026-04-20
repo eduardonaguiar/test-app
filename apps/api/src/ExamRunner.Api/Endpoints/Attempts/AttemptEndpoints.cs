@@ -64,7 +64,35 @@ public static class AttemptEndpoints
             .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesProblem(StatusCodes.Status500InternalServerError);
 
+        app.MapGet("/history", GetHistory)
+            .WithName("GetHistory")
+            .WithTags("History")
+            .WithSummary("Lista o histórico de tentativas finalizadas")
+            .Produces<AttemptHistoryResponse>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
+
         return app;
+    }
+
+    private static async Task<Ok<AttemptHistoryResponse>> GetHistory(
+        IAttemptService attemptService,
+        CancellationToken cancellationToken)
+    {
+        var snapshots = await attemptService.GetHistoryAsync(cancellationToken);
+        var response = new AttemptHistoryResponse(
+            snapshots
+                .Select(snapshot => new AttemptHistoryItemResponse(
+                    snapshot.AttemptId,
+                    snapshot.ExamId,
+                    snapshot.ExamTitle,
+                    snapshot.AttemptedAtUtc,
+                    snapshot.Score,
+                    snapshot.Percentage,
+                    snapshot.TimeSpentSeconds,
+                    snapshot.Status))
+                .ToArray());
+
+        return TypedResults.Ok(response);
     }
 
     private static async Task<Results<Ok<AttemptResultResponse>, NotFound<ProblemDetails>, Conflict<ProblemDetails>>> GetAttemptResult(

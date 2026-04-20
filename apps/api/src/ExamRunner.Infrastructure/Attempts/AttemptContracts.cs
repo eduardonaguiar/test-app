@@ -13,6 +13,16 @@ public sealed record AttemptSnapshot(
     DateTimeOffset LastSeenAtUtc,
     DateTimeOffset? SubmittedAtUtc);
 
+public sealed record AttemptHistoryItemSnapshot(
+    Guid AttemptId,
+    Guid ExamId,
+    string ExamTitle,
+    DateTimeOffset AttemptedAtUtc,
+    int? Score,
+    decimal? Percentage,
+    int TimeSpentSeconds,
+    string Status);
+
 public sealed record AttemptExecutionStateSnapshot(
     Guid AttemptId,
     Guid ExamId,

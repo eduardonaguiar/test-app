@@ -1672,6 +1672,86 @@ public sealed class AttemptServiceTests
         }
     }
 
+    [Fact]
+    public async Task GetHistoryAsync_ShouldReturnFinalizedAttemptsWithComputedMetrics()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<ExamRunnerDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        var now = new DateTimeOffset(2026, 4, 20, 18, 0, 0, TimeSpan.Zero);
+        var examId = Guid.NewGuid();
+        var includedAttemptId = Guid.NewGuid();
+        var inProgressAttemptId = Guid.NewGuid();
+
+        await using (var seedContext = new ExamRunnerDbContext(options))
+        {
+            await seedContext.Database.EnsureCreatedAsync();
+
+            seedContext.Exams.Add(new ExamEntity
+            {
+                Id = examId,
+                Title = "Simulado de Redes",
+                Description = "Desc",
+                DurationMinutes = 60,
+                PassingScorePercentage = 70,
+                SchemaVersion = "1.0.0"
+            });
+
+            seedContext.Attempts.Add(new AttemptEntity
+            {
+                Id = includedAttemptId,
+                ExamId = examId,
+                Status = AttemptStatuses.Submitted,
+                StartedAtUtc = now.AddMinutes(-30),
+                DeadlineAtUtc = now.AddMinutes(30),
+                LastSeenAtUtc = now.AddMinutes(-2),
+                SubmittedAtUtc = now.AddMinutes(-1),
+                Result = new AttemptResultEntity
+                {
+                    Id = Guid.NewGuid(),
+                    TotalQuestions = 10,
+                    CorrectAnswers = 8,
+                    IncorrectAnswers = 2,
+                    UnansweredQuestions = 0,
+                    ScorePercentage = 80m,
+                    Passed = true,
+                    EvaluatedAtUtc = now.AddMinutes(-1)
+                }
+            });
+
+            seedContext.Attempts.Add(new AttemptEntity
+            {
+                Id = inProgressAttemptId,
+                ExamId = examId,
+                Status = AttemptStatuses.InProgress,
+                StartedAtUtc = now.AddMinutes(-5),
+                DeadlineAtUtc = now.AddMinutes(55),
+                LastSeenAtUtc = now.AddMinutes(-1)
+            });
+
+            await seedContext.SaveChangesAsync();
+        }
+
+        IReadOnlyList<AttemptHistoryItemSnapshot> history;
+        await using (var actContext = new ExamRunnerDbContext(options))
+        {
+            var sut = new AttemptService(actContext, new FrozenTimeProvider(now));
+            history = await sut.GetHistoryAsync(CancellationToken.None);
+        }
+
+        history.Should().HaveCount(1);
+        history[0].AttemptId.Should().Be(includedAttemptId);
+        history[0].ExamTitle.Should().Be("Simulado de Redes");
+        history[0].Score.Should().Be(8);
+        history[0].Percentage.Should().Be(80m);
+        history[0].TimeSpentSeconds.Should().Be(1740);
+        history[0].Status.Should().Be(AttemptStatuses.Submitted);
+    }
+
     private sealed class FrozenTimeProvider(DateTimeOffset now) : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => now;
