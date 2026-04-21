@@ -1,9 +1,12 @@
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace ExamRunner.Infrastructure.Data.Migrations;
 
+[DbContext(typeof(global::ExamRunner.Infrastructure.Data.ExamRunnerDbContext))]
+[Migration("20260420170000")]
 public partial class AddReconnectTerminateIfExceeded : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
