@@ -5,6 +5,17 @@ export type ImportExamSuccess = {
   questionCount: number;
 };
 
+export type ImportedExamSummary = {
+  examId: string;
+  title: string;
+  description: string;
+  durationMinutes: number;
+  passingScorePercentage: number;
+  schemaVersion: string;
+  sectionCount: number;
+  questionCount: number;
+};
+
 export type ImportValidationError = {
   path: string;
   message: string;
@@ -34,6 +45,17 @@ type ProblemDetailsPayload = {
   status?: number;
   code?: unknown;
   errors?: unknown;
+};
+
+type ExamDetailPayload = {
+  examId?: unknown;
+  title?: unknown;
+  description?: unknown;
+  durationMinutes?: unknown;
+  passingScorePercentage?: unknown;
+  schemaVersion?: unknown;
+  sectionCount?: unknown;
+  questionCount?: unknown;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -93,6 +115,14 @@ function toFailure(responsePayload: unknown, status: number): ImportExamFailure 
   };
 }
 
+function toTechnicalFailure(message: string): ImportExamFailure {
+  return {
+    kind: 'technical',
+    message,
+    validationErrors: [],
+  };
+}
+
 export async function importExam(payload: unknown, signal?: AbortSignal): Promise<ImportExamSuccess> {
   let response: Response;
 
@@ -106,11 +136,7 @@ export async function importExam(payload: unknown, signal?: AbortSignal): Promis
       signal,
     });
   } catch {
-    throw new ImportExamApiError({
-      kind: 'technical',
-      message: 'Não foi possível conectar com a API para importar a prova.',
-      validationErrors: [],
-    });
+    throw new ImportExamApiError(toTechnicalFailure('Não foi possível conectar com a API para importar a prova.'));
   }
 
   if (!response.ok) {
@@ -127,4 +153,46 @@ export async function importExam(payload: unknown, signal?: AbortSignal): Promis
 
   const successPayload = (await response.json()) as ImportExamSuccess;
   return successPayload;
+}
+
+export async function fetchImportedExamSummary(examId: string, signal?: AbortSignal): Promise<ImportedExamSummary> {
+  let response: Response;
+
+  try {
+    response = await fetch(`/api/exams/${examId}`, { signal });
+  } catch {
+    throw new ImportExamApiError(toTechnicalFailure('A prova foi importada, mas não foi possível carregar o resumo completo.'));
+  }
+
+  if (!response.ok) {
+    throw new ImportExamApiError(
+      toTechnicalFailure(`A prova foi importada, mas o resumo retornou status ${response.status}.`),
+    );
+  }
+
+  const payload = (await response.json()) as ExamDetailPayload;
+
+  if (
+    typeof payload.examId !== 'string' ||
+    typeof payload.title !== 'string' ||
+    typeof payload.description !== 'string' ||
+    typeof payload.durationMinutes !== 'number' ||
+    typeof payload.passingScorePercentage !== 'number' ||
+    typeof payload.schemaVersion !== 'string' ||
+    typeof payload.sectionCount !== 'number' ||
+    typeof payload.questionCount !== 'number'
+  ) {
+    throw new ImportExamApiError(toTechnicalFailure('A prova foi importada, mas o resumo retornou em formato inesperado.'));
+  }
+
+  return {
+    examId: payload.examId,
+    title: payload.title,
+    description: payload.description,
+    durationMinutes: payload.durationMinutes,
+    passingScorePercentage: payload.passingScorePercentage,
+    schemaVersion: payload.schemaVersion,
+    sectionCount: payload.sectionCount,
+    questionCount: payload.questionCount,
+  };
 }

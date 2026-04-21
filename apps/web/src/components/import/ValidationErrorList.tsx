@@ -6,16 +6,20 @@ type ValidationErrorListProps = {
 
 export function ValidationErrorList({ errors }: ValidationErrorListProps) {
   if (errors.length === 0) {
-    return null;
+    return <p className="subtitle">Nenhum detalhe de validação foi informado pela API.</p>;
   }
 
   return (
-    <ul className="validation-error-list">
-      {errors.map((error) => (
-        <li key={`${error.path}:${error.message}`}>
-          <strong>{error.path || 'payload'}</strong>: {error.message}
-        </li>
-      ))}
-    </ul>
+    <div className="stack-xs">
+      <p className="subtitle">Corrija os itens abaixo no JSON e tente novamente:</p>
+      <ul className="validation-error-list">
+        {errors.map((error) => (
+          <li key={`${error.path}:${error.message}`}>
+            <strong>{error.path || 'payload'}</strong>
+            <span>{error.message}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

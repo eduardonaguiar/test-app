@@ -2,14 +2,15 @@ import { Link } from 'react-router-dom';
 import { InlineError } from '../feedback/InlineError';
 import { PageLoading } from '../feedback/PageLoading';
 import { SuccessAlert } from '../feedback/SuccessAlert';
+import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../ui/card';
-import type { ImportExamFailure, ImportExamSuccess } from '../../services/examImport';
+import type { ImportExamFailure, ImportedExamSummary } from '../../services/examImport';
 import { ValidationErrorList } from './ValidationErrorList';
 
 type ImportStatusPanelProps = {
   isSubmitting: boolean;
-  successResult: ImportExamSuccess | null;
+  successResult: ImportedExamSummary | null;
   failure: ImportExamFailure | null;
   onReset: () => void;
 };
@@ -23,13 +24,17 @@ export function ImportStatusPanel({ isSubmitting, successResult, failure, onRese
     return (
       <div className="stack-md" aria-live="polite" aria-label="Importação concluída com sucesso">
         <SuccessAlert
-          title="Prova importada com sucesso"
-          description="A prova já está disponível no catálogo e pronta para tentativa."
+          title="Simulado importado com sucesso"
+          description="A prova foi validada e já está disponível para iniciar tentativas."
         />
 
         <Card>
           <CardHeader>
-            <CardTitle>Resumo da importação</CardTitle>
+            <CardTitle>{successResult.title}</CardTitle>
+            <p className="subtitle import-success-summary__subtitle">
+              {successResult.questionCount} questões · {successResult.durationMinutes} min · {successResult.sectionCount} seções ·
+              aprovação: {successResult.passingScorePercentage}%
+            </p>
           </CardHeader>
 
           <CardContent>
@@ -39,29 +44,27 @@ export function ImportStatusPanel({ isSubmitting, successResult, failure, onRese
                 <dd>{successResult.examId}</dd>
               </div>
               <div>
-                <dt>Título</dt>
-                <dd>{successResult.title}</dd>
+                <dt>Versão do schema</dt>
+                <dd>
+                  <Badge variant="outline">{successResult.schemaVersion}</Badge>
+                </dd>
               </div>
               <div>
-                <dt>Seções</dt>
-                <dd>{successResult.sectionCount}</dd>
-              </div>
-              <div>
-                <dt>Questões</dt>
-                <dd>{successResult.questionCount}</dd>
+                <dt>Descrição</dt>
+                <dd>{successResult.description || 'Sem descrição informada.'}</dd>
               </div>
             </dl>
           </CardContent>
 
           <CardFooter className="inline-links">
             <Link className="ui-button ui-button--default ui-button--default-size" to={`/exams/${successResult.examId}`}>
-              Ver prova
+              Ver simulado
             </Link>
             <Link className="ui-button ui-button--outline ui-button--default-size" to="/">
-              Voltar para lista
+              Voltar ao catálogo
             </Link>
             <Button variant="outline" onClick={onReset}>
-              Importar outra
+              Importar outro
             </Button>
           </CardFooter>
         </Card>
@@ -72,21 +75,25 @@ export function ImportStatusPanel({ isSubmitting, successResult, failure, onRese
   if (failure) {
     return (
       <InlineError
-        title={failure.kind === 'validation' ? 'Arquivo inválido para importação' : 'Falha técnica na importação'}
-        description={failure.message}
+        title={failure.kind === 'validation' ? 'Validação da prova falhou' : 'Falha técnica na importação'}
+        description={
+          failure.kind === 'validation'
+            ? 'O arquivo foi lido, mas não está compatível com o formato oficial esperado.'
+            : failure.message
+        }
         role="alert"
         aria-live="polite"
         aria-label="Falha na importação"
       >
-        <ValidationErrorList errors={failure.validationErrors} />
+        {failure.kind === 'validation' ? <ValidationErrorList errors={failure.validationErrors} /> : null}
       </InlineError>
     );
   }
 
   return (
     <SuccessAlert
-      title="Aguardando importação"
-      description="Selecione um arquivo JSON e clique em “Importar prova” para iniciar."
+      title="Fluxo de importação pronto"
+      description="Selecione o arquivo, aguarde a validação local e depois clique em “Importar prova”."
       aria-live="polite"
       aria-label="Status da importação"
     />
