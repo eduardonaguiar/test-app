@@ -16,6 +16,34 @@ public sealed record AttemptResponse(
 public sealed record AttemptHistoryResponse(
     IReadOnlyList<AttemptHistoryItemResponse> Items);
 
+public sealed record PerformanceDashboardResponse(
+    PerformanceDashboardSummaryResponse Summary,
+    IReadOnlyList<AttemptTrendPointResponse> AttemptTrend,
+    IReadOnlyList<TopicPerformanceResponse> TopicPerformance);
+
+public sealed record PerformanceDashboardSummaryResponse(
+    int TotalAttempts,
+    int TotalQuestions,
+    int TotalCorrect,
+    int TotalIncorrect,
+    decimal GlobalAccuracyRate,
+    decimal AverageAttemptPercentage,
+    decimal? LastAttemptPercentage,
+    decimal? BestAttemptPercentage);
+
+public sealed record AttemptTrendPointResponse(
+    Guid AttemptId,
+    string Label,
+    DateTimeOffset ExecutedAt,
+    decimal Percentage);
+
+public sealed record TopicPerformanceResponse(
+    string Topic,
+    int TotalQuestions,
+    int TotalCorrect,
+    int TotalIncorrect,
+    decimal AccuracyRate);
+
 public sealed record AttemptHistoryItemResponse(
     Guid AttemptId,
     Guid ExamId,

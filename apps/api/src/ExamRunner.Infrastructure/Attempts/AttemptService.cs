@@ -42,6 +42,75 @@ public sealed class AttemptService(
             .ToArray();
     }
 
+    public async Task<PerformanceDashboardSnapshot> GetPerformanceDashboardAsync(CancellationToken cancellationToken = default)
+    {
+        var attempts = await dbContext.Attempts
+            .Include(x => x.Result)
+            .Where(x => x.Result != null && x.Status != AttemptStatuses.InProgress)
+            .OrderBy(x => x.SubmittedAtUtc ?? x.StartedAtUtc)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        var trend = attempts
+            .Select((attempt, index) => new AttemptTrendPointSnapshot(
+                attempt.Id,
+                $"Tentativa {index + 1}",
+                attempt.SubmittedAtUtc ?? attempt.StartedAtUtc,
+                attempt.Result!.ScorePercentage))
+            .ToArray();
+
+        var totalAttempts = attempts.Count;
+        var totalQuestions = attempts.Sum(x => x.Result!.TotalQuestions);
+        var totalCorrect = attempts.Sum(x => x.Result!.CorrectAnswers);
+        var totalIncorrect = attempts.Sum(x => x.Result!.IncorrectAnswers);
+        var globalAccuracyRate = totalQuestions == 0
+            ? 0m
+            : decimal.Round((totalCorrect * 100m) / totalQuestions, 2);
+        var averageAttemptPercentage = totalAttempts == 0
+            ? 0m
+            : decimal.Round(attempts.Average(x => x.Result!.ScorePercentage), 2);
+        decimal? lastAttemptPercentage = trend.LastOrDefault()?.Percentage;
+        decimal? bestAttemptPercentage = totalAttempts == 0
+            ? null
+            : attempts.Max(x => x.Result!.ScorePercentage);
+
+        var topicPerformance = attempts
+            .SelectMany(x => DeserializePersistedQuestionReviews(x.Result!.QuestionReviewsJson))
+            .GroupBy(review => string.IsNullOrWhiteSpace(review.Topic) ? "Sem tópico" : review.Topic.Trim(), StringComparer.OrdinalIgnoreCase)
+            .Select(group =>
+            {
+                var topic = group.Key;
+                var total = group.Count();
+                var correct = group.Count(item => item.IsCorrect);
+                var incorrect = total - correct;
+                var accuracyRate = total == 0 ? 0m : decimal.Round((correct * 100m) / total, 2);
+
+                return new TopicPerformanceSnapshot(
+                    topic,
+                    total,
+                    correct,
+                    incorrect,
+                    accuracyRate);
+            })
+            .OrderBy(x => x.AccuracyRate)
+            .ThenByDescending(x => x.TotalQuestions)
+            .ThenBy(x => x.Topic)
+            .ToArray();
+
+        return new PerformanceDashboardSnapshot(
+            new PerformanceDashboardSummarySnapshot(
+                totalAttempts,
+                totalQuestions,
+                totalCorrect,
+                totalIncorrect,
+                globalAccuracyRate,
+                averageAttemptPercentage,
+                lastAttemptPercentage,
+                bestAttemptPercentage),
+            trend,
+            topicPerformance);
+    }
+
     public async Task<AttemptSnapshot> CreateAsync(CreateAttemptCommand command, CancellationToken cancellationToken = default)
     {
         var exam = await dbContext.Exams

@@ -44,6 +44,9 @@ export function HomePage() {
         <Link className="details-button secondary" to="/history">
           Ver histórico de tentativas
         </Link>
+        <Link className="details-button secondary" to="/dashboard">
+          Ver dashboard de desempenho
+        </Link>
       </div>
 
       {errorMessage ? (
