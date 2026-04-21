@@ -1,9 +1,15 @@
 import { useState } from 'react';
-import { importExam, ImportExamApiError, type ImportExamFailure, type ImportExamSuccess } from '../services/examImport';
+import {
+  fetchImportedExamSummary,
+  importExam,
+  ImportExamApiError,
+  type ImportedExamSummary,
+  type ImportExamFailure,
+} from '../services/examImport';
 
 type UseExamImportResult = {
   isSubmitting: boolean;
-  successResult: ImportExamSuccess | null;
+  successResult: ImportedExamSummary | null;
   failure: ImportExamFailure | null;
   submitImport: (payload: unknown) => Promise<void>;
   reset: () => void;
@@ -11,7 +17,7 @@ type UseExamImportResult = {
 
 export function useExamImport(): UseExamImportResult {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [successResult, setSuccessResult] = useState<ImportExamSuccess | null>(null);
+  const [successResult, setSuccessResult] = useState<ImportedExamSummary | null>(null);
   const [failure, setFailure] = useState<ImportExamFailure | null>(null);
 
   async function submitImport(payload: unknown) {
@@ -25,7 +31,8 @@ export function useExamImport(): UseExamImportResult {
 
     try {
       const response = await importExam(payload);
-      setSuccessResult(response);
+      const summary = await fetchImportedExamSummary(response.examId);
+      setSuccessResult(summary);
     } catch (error) {
       if (error instanceof ImportExamApiError) {
         setFailure(error.failure);

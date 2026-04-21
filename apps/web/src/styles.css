@@ -1029,3 +1029,55 @@ h1 {
     grid-template-columns: 1fr;
   }
 }
+
+.import-file-input {
+  display: none;
+}
+
+.import-dropzone {
+  width: 100%;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-muted);
+  padding: 1rem;
+  display: grid;
+  gap: 0.35rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.import-dropzone:hover {
+  border-color: var(--ring);
+  background: #eff6ff;
+}
+
+.import-dropzone.is-drag-over {
+  border-color: var(--ring);
+  background: #dbeafe;
+}
+
+.import-dropzone__title {
+  font-weight: 700;
+}
+
+.import-dropzone__subtitle,
+.import-dropzone__hint {
+  color: var(--muted-foreground);
+  font-size: 0.9rem;
+}
+
+.import-success-summary__subtitle {
+  margin-top: 0.25rem;
+}
+
+.validation-error-list {
+  margin: 0;
+  padding-left: 1rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.validation-error-list li {
+  display: grid;
+  gap: 0.2rem;
+}
