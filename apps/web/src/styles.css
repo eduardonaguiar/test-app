@@ -411,3 +411,47 @@ h1 {
   gap: 1rem;
   flex-wrap: wrap;
 }
+
+.primary-button:disabled {
+  cursor: not-allowed;
+  background: #9ca3af;
+}
+
+.file-info {
+  margin-top: 0.75rem;
+  color: #1f2937;
+}
+
+.file-info p,
+.file-hint {
+  margin: 0.25rem 0;
+}
+
+.feedback-error {
+  margin-top: 0.75rem;
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.success-panel {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+
+.error-panel {
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+
+.validation-error-list {
+  margin: 0.75rem 0 0;
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 0.375rem;
+}
+
+.as-button {
+  border: 1px solid #2563eb;
+  cursor: pointer;
+  font-size: 0.95rem;
+}

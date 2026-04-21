@@ -37,7 +37,10 @@ export function HomePage() {
       <h1>Provas importadas</h1>
       <p className="subtitle">Listagem carregada diretamente do backend.</p>
 
-      <div className="page-actions">
+      <div className="page-actions inline-links">
+        <Link className="details-button" to="/exams/import">
+          Importar nova prova
+        </Link>
         <Link className="details-button secondary" to="/history">
           Ver histórico de tentativas
         </Link>
