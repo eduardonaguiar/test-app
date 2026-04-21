@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { CardSkeleton } from '../components/feedback/CardSkeleton';
+import { EmptyState } from '../components/feedback/EmptyState';
+import { InlineError } from '../components/feedback/InlineError';
+import { TableSkeleton } from '../components/feedback/TableSkeleton';
 import { PageHeader } from '../components/layout/PageHeader';
 import { PageSection } from '../components/layout/PageSection';
-import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 
 type PerformanceDashboardResponse = {
@@ -55,11 +58,13 @@ function formatDateTime(value: string): string {
 export function PerformanceDashboardPage() {
   const [dashboard, setDashboard] = useState<PerformanceDashboardResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
 
     async function loadDashboard() {
+      setErrorMessage(null);
       const response = await fetch('/api/performance', { signal: controller.signal });
 
       if (!response.ok) {
@@ -81,7 +86,7 @@ export function PerformanceDashboardPage() {
     return () => {
       controller.abort();
     };
-  }, []);
+  }, [refreshToken]);
 
   const hasData = useMemo(() => (dashboard ? dashboard.summary.totalAttempts > 0 : false), [dashboard]);
 
@@ -103,10 +108,14 @@ export function PerformanceDashboardPage() {
       />
 
       {errorMessage ? (
-        <Alert variant="destructive">
-          <AlertTitle>Falha ao carregar dashboard</AlertTitle>
-          <AlertDescription>{errorMessage}</AlertDescription>
-        </Alert>
+        <InlineError
+          title="Falha ao carregar dashboard"
+          description={errorMessage}
+          onRetry={() => {
+            setDashboard(null);
+            setRefreshToken((current) => current + 1);
+          }}
+        />
       ) : dashboard ? (
         hasData ? (
           <>
@@ -171,16 +180,21 @@ export function PerformanceDashboardPage() {
             </PageSection>
           </>
         ) : (
-          <Alert>
-            <AlertTitle>Dashboard ainda vazio</AlertTitle>
-            <AlertDescription>Realize uma prova para começar a acompanhar seu desempenho.</AlertDescription>
-          </Alert>
+          <EmptyState
+            title="Ainda não há dados suficientes para o dashboard"
+            description="Finalize ao menos uma tentativa para visualizar os indicadores de desempenho."
+            action={
+              <Link className="ui-button ui-button--default ui-button--default-size" to="/">
+                Iniciar simulado
+              </Link>
+            }
+          />
         )
       ) : (
-        <Alert>
-          <AlertTitle>Carregando dashboard</AlertTitle>
-          <AlertDescription>Buscando dados de desempenho...</AlertDescription>
-        </Alert>
+        <div className="stack-md">
+          <CardSkeleton count={4} minHeight={140} />
+          <TableSkeleton rows={6} columns={5} />
+        </div>
       )}
     </div>
   );

@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { EmptyState } from '../components/feedback/EmptyState';
+import { InlineError } from '../components/feedback/InlineError';
+import { TableSkeleton } from '../components/feedback/TableSkeleton';
 import { PageHeader } from '../components/layout/PageHeader';
 import { PageSection } from '../components/layout/PageSection';
-import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
 
@@ -62,11 +64,13 @@ function canOpenResult(status: string): boolean {
 export function HistoryPage() {
   const [history, setHistory] = useState<AttemptHistoryResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
 
     async function loadHistory() {
+      setErrorMessage(null);
       const response = await fetch('/api/history', { signal: controller.signal });
 
       if (!response.ok) {
@@ -88,7 +92,7 @@ export function HistoryPage() {
     return () => {
       controller.abort();
     };
-  }, []);
+  }, [refreshToken]);
 
   return (
     <div className="stack-md">
@@ -103,17 +107,26 @@ export function HistoryPage() {
       />
 
       {errorMessage ? (
-        <Alert variant="destructive">
-          <AlertTitle>Falha ao carregar histórico</AlertTitle>
-          <AlertDescription>{errorMessage}</AlertDescription>
-        </Alert>
+        <InlineError
+          title="Falha ao carregar histórico"
+          description={errorMessage}
+          onRetry={() => {
+            setHistory(null);
+            setRefreshToken((current) => current + 1);
+          }}
+        />
       ) : history ? (
         <PageSection ariaLabel="Histórico de tentativas">
           {history.items.length === 0 ? (
-            <Alert>
-              <AlertTitle>Nenhuma tentativa registrada</AlertTitle>
-              <AlertDescription>Nenhuma tentativa finalizada ou em andamento foi registrada até o momento.</AlertDescription>
-            </Alert>
+            <EmptyState
+              title="Ainda não há tentativas registradas"
+              description="Inicie um simulado para começar a montar seu histórico de desempenho."
+              action={
+                <Link className="ui-button ui-button--default ui-button--default-size" to="/">
+                  Iniciar primeiro simulado
+                </Link>
+              }
+            />
           ) : (
             <div className="stack-md">
               {history.items.map((attempt) => {
@@ -175,10 +188,7 @@ export function HistoryPage() {
           )}
         </PageSection>
       ) : (
-        <Alert>
-          <AlertTitle>Carregando histórico</AlertTitle>
-          <AlertDescription>Buscando tentativas registradas...</AlertDescription>
-        </Alert>
+        <TableSkeleton rows={4} columns={5} />
       )}
     </div>
   );
