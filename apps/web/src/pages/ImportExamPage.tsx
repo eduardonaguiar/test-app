@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FilePicker } from '../components/import/FilePicker';
 import { ImportStatusPanel } from '../components/import/ImportStatusPanel';
+import { Button } from '../components/ui/button';
 import { useExamImport } from '../hooks/useExamImport';
 
 async function readJsonFile(file: File): Promise<unknown> {
@@ -52,12 +53,12 @@ export function ImportExamPage() {
   }
 
   return (
-    <main className="page">
-      <Link to="/" className="back-link">
+    <main className="page stack-md">
+      <Link className="ui-button ui-button--ghost ui-button--sm" to="/">
         ← Voltar para provas
       </Link>
 
-      <header className="exam-details-header">
+      <header className="page-header">
         <h1>Importar prova</h1>
         <p className="subtitle">
           Faça upload de um arquivo JSON compatível com o schema oficial de provas. Em caso de erro, o sistema
@@ -72,15 +73,10 @@ export function ImportExamPage() {
         onFileSelected={handleFileSelected}
       />
 
-      <section className="exam-actions">
-        <button
-          type="button"
-          className="primary-button"
-          disabled={!selectedFile || isSubmitting}
-          onClick={handleImport}
-        >
+      <section>
+        <Button disabled={!selectedFile || isSubmitting} onClick={handleImport}>
           {isSubmitting ? 'Importando...' : 'Importar prova'}
-        </button>
+        </Button>
       </section>
 
       <ImportStatusPanel
