@@ -86,3 +86,31 @@ public sealed record AttemptResultQuestionReviewSnapshot(
     bool IsCorrect,
     string ExplanationSummary,
     string ExplanationDetails);
+
+public sealed record PerformanceDashboardSnapshot(
+    PerformanceDashboardSummarySnapshot Summary,
+    IReadOnlyList<AttemptTrendPointSnapshot> AttemptTrend,
+    IReadOnlyList<TopicPerformanceSnapshot> TopicPerformance);
+
+public sealed record PerformanceDashboardSummarySnapshot(
+    int TotalAttempts,
+    int TotalQuestions,
+    int TotalCorrect,
+    int TotalIncorrect,
+    decimal GlobalAccuracyRate,
+    decimal AverageAttemptPercentage,
+    decimal? LastAttemptPercentage,
+    decimal? BestAttemptPercentage);
+
+public sealed record AttemptTrendPointSnapshot(
+    Guid AttemptId,
+    string Label,
+    DateTimeOffset ExecutedAtUtc,
+    decimal Percentage);
+
+public sealed record TopicPerformanceSnapshot(
+    string Topic,
+    int TotalQuestions,
+    int TotalCorrect,
+    int TotalIncorrect,
+    decimal AccuracyRate);

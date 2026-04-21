@@ -71,7 +71,49 @@ public static class AttemptEndpoints
             .Produces<AttemptHistoryResponse>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status500InternalServerError);
 
+        app.MapGet("/performance", GetPerformanceDashboard)
+            .WithName("GetPerformanceDashboard")
+            .WithTags("Performance")
+            .WithSummary("Consolida o desempenho histórico para dashboard de estudo")
+            .Produces<PerformanceDashboardResponse>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
+
         return app;
+    }
+
+    private static async Task<Ok<PerformanceDashboardResponse>> GetPerformanceDashboard(
+        IAttemptService attemptService,
+        CancellationToken cancellationToken)
+    {
+        var dashboard = await attemptService.GetPerformanceDashboardAsync(cancellationToken);
+
+        var response = new PerformanceDashboardResponse(
+            new PerformanceDashboardSummaryResponse(
+                dashboard.Summary.TotalAttempts,
+                dashboard.Summary.TotalQuestions,
+                dashboard.Summary.TotalCorrect,
+                dashboard.Summary.TotalIncorrect,
+                dashboard.Summary.GlobalAccuracyRate,
+                dashboard.Summary.AverageAttemptPercentage,
+                dashboard.Summary.LastAttemptPercentage,
+                dashboard.Summary.BestAttemptPercentage),
+            dashboard.AttemptTrend
+                .Select(point => new AttemptTrendPointResponse(
+                    point.AttemptId,
+                    point.Label,
+                    point.ExecutedAtUtc,
+                    point.Percentage))
+                .ToArray(),
+            dashboard.TopicPerformance
+                .Select(topic => new TopicPerformanceResponse(
+                    topic.Topic,
+                    topic.TotalQuestions,
+                    topic.TotalCorrect,
+                    topic.TotalIncorrect,
+                    topic.AccuracyRate))
+                .ToArray());
+
+        return TypedResults.Ok(response);
     }
 
     private static async Task<Ok<AttemptHistoryResponse>> GetHistory(

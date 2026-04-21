@@ -1896,6 +1896,159 @@ public sealed class AttemptServiceTests
         history[0].Status.Should().Be(AttemptStatuses.Submitted);
     }
 
+    [Fact]
+    public async Task GetPerformanceDashboardAsync_WithNoAttempts_ShouldReturnZeroedSummary()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<ExamRunnerDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using (var context = new ExamRunnerDbContext(options))
+        {
+            await context.Database.EnsureCreatedAsync();
+            var sut = new AttemptService(context, new FrozenTimeProvider(DateTimeOffset.UtcNow));
+
+            var dashboard = await sut.GetPerformanceDashboardAsync(CancellationToken.None);
+
+            dashboard.Summary.TotalAttempts.Should().Be(0);
+            dashboard.Summary.TotalQuestions.Should().Be(0);
+            dashboard.Summary.GlobalAccuracyRate.Should().Be(0m);
+            dashboard.Summary.LastAttemptPercentage.Should().BeNull();
+            dashboard.AttemptTrend.Should().BeEmpty();
+            dashboard.TopicPerformance.Should().BeEmpty();
+        }
+    }
+
+    [Fact]
+    public async Task GetPerformanceDashboardAsync_ShouldAggregateTrendAndTopics()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<ExamRunnerDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        var now = new DateTimeOffset(2026, 4, 21, 9, 0, 0, TimeSpan.Zero);
+        var examId = Guid.NewGuid();
+
+        static string BuildReviewJson(params (string topic, bool isCorrect)[] rows)
+        {
+            return JsonSerializer.Serialize(
+                rows.Select((row, index) => new AttemptResultQuestionReviewSnapshot(
+                    Guid.NewGuid(),
+                    Guid.NewGuid(),
+                    "Section",
+                    $"Q-{index + 1}",
+                    "Prompt",
+                    row.topic,
+                    "medium",
+                    row.isCorrect ? Guid.NewGuid() : null,
+                    row.isCorrect ? "A" : null,
+                    row.isCorrect ? "Correct" : null,
+                    Guid.NewGuid(),
+                    "A",
+                    "Correct",
+                    row.isCorrect,
+                    "Resumo",
+                    "Detalhes")).ToArray());
+        }
+
+        await using (var seedContext = new ExamRunnerDbContext(options))
+        {
+            await seedContext.Database.EnsureCreatedAsync();
+
+            seedContext.Exams.Add(new ExamEntity
+            {
+                Id = examId,
+                Title = "Exam",
+                Description = "Desc",
+                DurationMinutes = 60,
+                PassingScorePercentage = 70,
+                SchemaVersion = "1.0.0"
+            });
+
+            seedContext.Attempts.Add(new AttemptEntity
+            {
+                Id = Guid.NewGuid(),
+                ExamId = examId,
+                Status = AttemptStatuses.Submitted,
+                StartedAtUtc = now.AddDays(-2),
+                SubmittedAtUtc = now.AddDays(-2).AddMinutes(50),
+                DeadlineAtUtc = now.AddDays(-2).AddHours(1),
+                LastSeenAtUtc = now.AddDays(-2).AddMinutes(40),
+                Result = new AttemptResultEntity
+                {
+                    Id = Guid.NewGuid(),
+                    TotalQuestions = 4,
+                    CorrectAnswers = 2,
+                    IncorrectAnswers = 2,
+                    UnansweredQuestions = 0,
+                    ScorePercentage = 50m,
+                    Passed = false,
+                    EvaluatedAtUtc = now.AddDays(-2).AddMinutes(50),
+                    QuestionReviewsJson = BuildReviewJson(("DDD", false), ("DDD", true), ("Cloud", true), ("Cloud", false))
+                }
+            });
+
+            seedContext.Attempts.Add(new AttemptEntity
+            {
+                Id = Guid.NewGuid(),
+                ExamId = examId,
+                Status = AttemptStatuses.Submitted,
+                StartedAtUtc = now.AddDays(-1),
+                SubmittedAtUtc = now.AddDays(-1).AddMinutes(45),
+                DeadlineAtUtc = now.AddDays(-1).AddHours(1),
+                LastSeenAtUtc = now.AddDays(-1).AddMinutes(35),
+                Result = new AttemptResultEntity
+                {
+                    Id = Guid.NewGuid(),
+                    TotalQuestions = 4,
+                    CorrectAnswers = 3,
+                    IncorrectAnswers = 1,
+                    UnansweredQuestions = 0,
+                    ScorePercentage = 75m,
+                    Passed = true,
+                    EvaluatedAtUtc = now.AddDays(-1).AddMinutes(45),
+                    QuestionReviewsJson = BuildReviewJson(("DDD", false), ("Cloud", true), ("Cloud", true), ("Cloud", true))
+                }
+            });
+
+            await seedContext.SaveChangesAsync();
+        }
+
+        await using (var actContext = new ExamRunnerDbContext(options))
+        {
+            var sut = new AttemptService(actContext, new FrozenTimeProvider(now));
+            var dashboard = await sut.GetPerformanceDashboardAsync(CancellationToken.None);
+
+            dashboard.Summary.TotalAttempts.Should().Be(2);
+            dashboard.Summary.TotalQuestions.Should().Be(8);
+            dashboard.Summary.TotalCorrect.Should().Be(5);
+            dashboard.Summary.TotalIncorrect.Should().Be(3);
+            dashboard.Summary.GlobalAccuracyRate.Should().Be(62.5m);
+            dashboard.Summary.AverageAttemptPercentage.Should().Be(62.5m);
+            dashboard.Summary.LastAttemptPercentage.Should().Be(75m);
+            dashboard.Summary.BestAttemptPercentage.Should().Be(75m);
+
+            dashboard.AttemptTrend.Should().HaveCount(2);
+            dashboard.AttemptTrend[0].Label.Should().Be("Tentativa 1");
+            dashboard.AttemptTrend[0].Percentage.Should().Be(50m);
+            dashboard.AttemptTrend[1].Label.Should().Be("Tentativa 2");
+            dashboard.AttemptTrend[1].Percentage.Should().Be(75m);
+
+            dashboard.TopicPerformance.Should().HaveCount(2);
+            dashboard.TopicPerformance[0].Topic.Should().Be("DDD");
+            dashboard.TopicPerformance[0].TotalQuestions.Should().Be(3);
+            dashboard.TopicPerformance[0].AccuracyRate.Should().Be(33.33m);
+            dashboard.TopicPerformance[1].Topic.Should().Be("Cloud");
+            dashboard.TopicPerformance[1].AccuracyRate.Should().Be(80m);
+        }
+    }
+
     private sealed class FrozenTimeProvider(DateTimeOffset now) : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => now;

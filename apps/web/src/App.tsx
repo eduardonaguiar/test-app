@@ -5,6 +5,7 @@ import { HomePage } from './pages/HomePage';
 import { AttemptResultPage } from './pages/AttemptResultPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { ImportExamPage } from './pages/ImportExamPage';
+import { PerformanceDashboardPage } from './pages/PerformanceDashboardPage';
 
 function PlaceholderPage() {
   return (
@@ -24,6 +25,7 @@ export function App() {
       <Route path="/attempts/:attemptId" element={<AttemptExecutionPage />} />
       <Route path="/attempts/:attemptId/result" element={<AttemptResultPage />} />
       <Route path="/history" element={<HistoryPage />} />
+      <Route path="/dashboard" element={<PerformanceDashboardPage />} />
       <Route path="*" element={<PlaceholderPage />} />
     </Routes>
   );
