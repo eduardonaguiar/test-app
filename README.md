@@ -128,11 +128,13 @@ A API expõe `POST /api/exams/import` para importar JSON de prova.
 
 ### Opção A — seed de exemplo (mais simples)
 
-Importa automaticamente o arquivo `contracts/exam-schema/examples/exam-basico-curto.json`:
+Importa automaticamente todos os simulados de demonstração em `contracts/exam-schema/examples/demo`:
 
 ```bash
 pnpm db:seed
 ```
+
+O comando é idempotente: se o `metadata.examId` já tiver sido importado, o simulado é ignorado.
 
 ### Opção B — import manual via cURL
 
@@ -148,7 +150,22 @@ Após importar, valide listagem:
 curl "http://localhost:8080/api/exams"
 ```
 
-> Dica: o formato oficial do JSON está em `contracts/exam-schema/` e os exemplos ficam em `contracts/exam-schema/examples/`.
+> Dica: o formato oficial do JSON está em `contracts/exam-schema/`, os simulados demo ficam em `contracts/exam-schema/examples/demo/` e há exemplos avulsos em `contracts/exam-schema/examples/`.
+
+### Reset e recarga dos seeds demo
+
+Para resetar a base local e recarregar os simulados de demonstração:
+
+```bash
+rm -f apps/api/src/ExamRunner.Api/App_Data/exam-runner.db
+pnpm db:seed
+```
+
+Se quiser semear apenas um arquivo isolado (modo legado):
+
+```bash
+pnpm db:seed:example
+```
 
 ## Como rodar testes
 

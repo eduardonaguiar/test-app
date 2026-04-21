@@ -1,0 +1,176 @@
+{
+  "schemaVersion": "1.0.0",
+  "metadata": {
+    "examId": "c4-basics-v1",
+    "title": "C4 Basics",
+    "description": "Simulado introdutório sobre níveis do modelo C4 e comunicação arquitetural.",
+    "language": "pt-BR",
+    "tags": [
+      "arquitetura",
+      "c4",
+      "inicial"
+    ]
+  },
+  "durationMinutes": 25,
+  "passingScore": 70,
+  "reconnectPolicy": {
+    "enabled": true,
+    "maxReconnects": 2,
+    "gracePeriodSeconds": 120,
+    "terminateIfExceeded": true
+  },
+  "sections": [
+    {
+      "sectionId": "c4-niveis",
+      "title": "Níveis do C4",
+      "questions": [
+        {
+          "questionId": "c4-1",
+          "prompt": "Qual diagrama do C4 é mais indicado para apresentar o sistema e suas integrações externas a stakeholders não técnicos?",
+          "options": [
+            {
+              "optionId": "a",
+              "text": "Diagrama de Código"
+            },
+            {
+              "optionId": "b",
+              "text": "Diagrama de Componentes"
+            },
+            {
+              "optionId": "c",
+              "text": "Diagrama de Contexto"
+            },
+            {
+              "optionId": "d",
+              "text": "Diagrama de Sequência"
+            }
+          ],
+          "correctOptionId": "c",
+          "explanationSummary": "O Contexto mostra limites e atores externos.",
+          "explanationDetailed": "O diagrama de Contexto enfatiza quem usa o sistema e com quais sistemas ele troca informação. É ideal para alinhar escopo e fronteiras antes de detalhar containers e componentes.",
+          "topic": "C4",
+          "difficulty": "easy",
+          "weight": 1
+        },
+        {
+          "questionId": "c4-2",
+          "prompt": "No C4, quando vale detalhar um diagrama de Componentes?",
+          "options": [
+            {
+              "optionId": "a",
+              "text": "Quando o objetivo é discutir infraestrutura de nuvem"
+            },
+            {
+              "optionId": "b",
+              "text": "Quando já existe um container definido e você precisa mostrar responsabilidades internas"
+            },
+            {
+              "optionId": "c",
+              "text": "Sempre antes do diagrama de Contexto"
+            },
+            {
+              "optionId": "d",
+              "text": "Apenas para sistemas monolíticos"
+            }
+          ],
+          "correctOptionId": "b",
+          "explanationSummary": "Componentes detalham um container específico.",
+          "explanationDetailed": "Após definir os containers, o próximo nível mostra como um container organiza suas responsabilidades internas. Esse detalhe ajuda revisão de acoplamento, coesão e contratos entre partes do mesmo container.",
+          "topic": "C4",
+          "difficulty": "medium",
+          "weight": 1.25
+        },
+        {
+          "questionId": "c4-3",
+          "prompt": "Qual prática melhora a utilidade dos diagramas C4 ao longo do tempo?",
+          "options": [
+            {
+              "optionId": "a",
+              "text": "Gerar diagramas só no início do projeto"
+            },
+            {
+              "optionId": "b",
+              "text": "Manter nomenclatura consistente e atualizar diagramas junto com mudanças arquiteturais"
+            },
+            {
+              "optionId": "c",
+              "text": "Evitar textos explicativos para manter visual limpo"
+            },
+            {
+              "optionId": "d",
+              "text": "Criar um diagrama único com todos os detalhes"
+            }
+          ],
+          "correctOptionId": "b",
+          "explanationSummary": "Consistência e atualização contínua evitam desatualização.",
+          "explanationDetailed": "Diagramas C4 funcionam melhor como documentação viva. Nomes estáveis e revisão contínua reduzem ambiguidades e permitem usar os artefatos em onboarding, planejamento e revisão técnica.",
+          "topic": "Documentação Arquitetural",
+          "difficulty": "easy",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "sectionId": "c4-comunicacao",
+      "title": "Comunicação e Trade-offs",
+      "questions": [
+        {
+          "questionId": "c4-4",
+          "prompt": "Em uma revisão arquitetural, qual risco surge ao pular o nível de containers e ir direto para código?",
+          "options": [
+            {
+              "optionId": "a",
+              "text": "Não há risco, pois código sempre substitui arquitetura"
+            },
+            {
+              "optionId": "b",
+              "text": "Perde-se visão de responsabilidades e fronteiras de implantação"
+            },
+            {
+              "optionId": "c",
+              "text": "Aumenta a precisão do roadmap"
+            },
+            {
+              "optionId": "d",
+              "text": "Facilita alinhamento com área de negócio"
+            }
+          ],
+          "correctOptionId": "b",
+          "explanationSummary": "Containers conectam arquitetura lógica e implantação.",
+          "explanationDetailed": "Sem o nível de containers, discussões ficam detalhistas cedo demais e ocultam decisões estruturais sobre isolamento, escalabilidade e integração. Isso dificulta decisões de operação e evolução.",
+          "topic": "Arquitetura de Software",
+          "difficulty": "medium",
+          "weight": 1.5
+        },
+        {
+          "questionId": "c4-5",
+          "prompt": "Qual afirmação sobre o diagrama de Código no C4 é correta?",
+          "options": [
+            {
+              "optionId": "a",
+              "text": "Ele substitui todos os testes automatizados"
+            },
+            {
+              "optionId": "b",
+              "text": "É opcional e deve ser usado quando o ganho de entendimento justificar o custo de manutenção"
+            },
+            {
+              "optionId": "c",
+              "text": "É obrigatório para qualquer time ágil"
+            },
+            {
+              "optionId": "d",
+              "text": "Deve ser exibido para usuários finais"
+            }
+          ],
+          "correctOptionId": "b",
+          "explanationSummary": "Código é nível opcional, usado com critério.",
+          "explanationDetailed": "O próprio modelo C4 trata o nível de código como opcional. Em muitos cenários, componentes já oferecem clareza suficiente; o nível de código é útil quando existe alta complexidade interna ou necessidade de análise aprofundada.",
+          "topic": "C4",
+          "difficulty": "medium",
+          "weight": 1.25
+        }
+      ]
+    }
+  ]
+}

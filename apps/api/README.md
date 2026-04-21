@@ -13,7 +13,7 @@ Backend modular em `apps/api` com solução .NET e contrato OpenAPI como fonte p
 
 - String de conexão padrão em `src/ExamRunner.Api/appsettings.json`:
   - `Data Source=App_Data/exam-runner.db`
-- Na inicialização, a API aplica migrations automaticamente (`Database.Migrate`) e executa seed inicial caso o catálogo esteja vazio.
+- Na inicialização, a API aplica migrations automaticamente (`Database.Migrate`).
 - Migrations ficam em `src/ExamRunner.Infrastructure/Data/Migrations`.
 
 ### Comandos úteis de migração
@@ -54,12 +54,18 @@ dotnet ef database update \
 - `pnpm api:lint` → valida formatação C# com `dotnet format --verify-no-changes`.
 - `pnpm api:openapi` → publica artefato OpenAPI para `contracts/openapi`.
 
-## Seed técnico (importação de exemplo)
+## Seed técnico (dados de demonstração)
 
-Para facilitar testes locais, execute o seed que importa automaticamente o arquivo `contracts/exam-schema/examples/exam-basico-curto.json` para o SQLite local:
+Para facilitar onboarding e smoke tests, execute o seed demo que importa todos os arquivos em `contracts/exam-schema/examples/demo`:
 
 ```bash
-pnpm api:seed
+pnpm db:seed
 ```
 
-> O seed só insere dados se a tabela de exames estiver vazia.
+O seed valida cada JSON contra o schema oficial e faz importação idempotente por `metadata.examId` (simulados já existentes são ignorados).
+
+Para semear um único arquivo:
+
+```bash
+pnpm db:seed:example
+```

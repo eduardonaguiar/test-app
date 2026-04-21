@@ -12,7 +12,7 @@
     "compose:up": "docker compose up --build",
     "compose:down": "docker compose down",
     "db:migrate": "bash ./scripts/db-migrate.sh",
-    "db:seed": "bash ./scripts/seed-example-exam.sh",
+    "db:seed": "bash ./scripts/seed-demo-exams.sh",
     "dev:web": "pnpm --filter @exam-runner/web dev",
     "dev:api": "dotnet watch --project apps/api/src/ExamRunner.Api run",
     "build:js": "pnpm -r --if-present build",
@@ -31,6 +31,7 @@
     "format:js": "pnpm --filter @exam-runner/web format",
     "format:check:js": "pnpm --filter @exam-runner/web format:check",
     "format:api": "dotnet format apps/api/ExamRunner.sln",
-    "format:check:api": "dotnet format apps/api/ExamRunner.sln --verify-no-changes"
+    "format:check:api": "dotnet format apps/api/ExamRunner.sln --verify-no-changes",
+    "db:seed:example": "bash ./scripts/seed-example-exam.sh"
   }
 }

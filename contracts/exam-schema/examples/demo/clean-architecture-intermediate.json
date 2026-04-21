@@ -1,0 +1,260 @@
+{
+  "schemaVersion": "1.0.0",
+  "metadata": {
+    "examId": "clean-architecture-intermediate-v1",
+    "title": "Clean Architecture Intermediate",
+    "description": "Questões sobre dependências, casos de uso e adapters em arquitetura limpa.",
+    "language": "pt-BR",
+    "tags": [
+      "clean-architecture",
+      "backend",
+      "arquitetura"
+    ]
+  },
+  "durationMinutes": 45,
+  "passingScore": 76,
+  "reconnectPolicy": {
+    "enabled": true,
+    "maxReconnects": 3,
+    "gracePeriodSeconds": 180,
+    "terminateIfExceeded": true
+  },
+  "sections": [
+    {
+      "sectionId": "ca-principles",
+      "title": "Princípios",
+      "questions": [
+        {
+          "questionId": "ca-1",
+          "prompt": "Segundo a regra de dependência, para onde o código de infraestrutura deve apontar?",
+          "options": [
+            {
+              "optionId": "a",
+              "text": "Para camadas mais internas (application/domain) via abstrações"
+            },
+            {
+              "optionId": "b",
+              "text": "Para UI e controllers"
+            },
+            {
+              "optionId": "c",
+              "text": "Para qualquer camada sem restrição"
+            },
+            {
+              "optionId": "d",
+              "text": "Para scripts de deploy"
+            }
+          ],
+          "correctOptionId": "a",
+          "explanationSummary": "Dependências apontam para dentro.",
+          "explanationDetailed": "Na Clean Architecture, regras de negócio não dependem de frameworks. Infraestrutura implementa contratos definidos internamente e pode ser trocada com menor impacto.",
+          "topic": "Clean Architecture",
+          "difficulty": "medium",
+          "weight": 1.5
+        },
+        {
+          "questionId": "ca-2",
+          "prompt": "Qual responsabilidade é típica de um caso de uso (application service)?",
+          "options": [
+            {
+              "optionId": "a",
+              "text": "Renderizar HTML"
+            },
+            {
+              "optionId": "b",
+              "text": "Orquestrar fluxo da regra de negócio e validar pré-condições de aplicação"
+            },
+            {
+              "optionId": "c",
+              "text": "Gerenciar conexões TCP de baixo nível"
+            },
+            {
+              "optionId": "d",
+              "text": "Configurar DNS"
+            }
+          ],
+          "correctOptionId": "b",
+          "explanationSummary": "Caso de uso coordena fluxo de aplicação.",
+          "explanationDetailed": "Use cases conectam entrada, domínio e saída, aplicando regras de aplicação sem acoplar detalhes de transporte ou persistência.",
+          "topic": "Application Layer",
+          "difficulty": "medium",
+          "weight": 1.25
+        },
+        {
+          "questionId": "ca-3",
+          "prompt": "Por que manter DTOs HTTP separados de entidades de domínio?",
+          "options": [
+            {
+              "optionId": "a",
+              "text": "Para duplicar código sem motivo"
+            },
+            {
+              "optionId": "b",
+              "text": "Para proteger o domínio de mudanças no contrato externo"
+            },
+            {
+              "optionId": "c",
+              "text": "Para impedir testes automatizados"
+            },
+            {
+              "optionId": "d",
+              "text": "Para eliminar validação de entrada"
+            }
+          ],
+          "correctOptionId": "b",
+          "explanationSummary": "Separação protege fronteiras e evolução.",
+          "explanationDetailed": "Contratos HTTP mudam por necessidades de cliente. Separar DTOs evita vazamento de preocupações externas para o núcleo de domínio e reduz efeito cascata de mudanças.",
+          "topic": "Fronteiras",
+          "difficulty": "easy",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "sectionId": "ca-practice",
+      "title": "Decisões práticas",
+      "questions": [
+        {
+          "questionId": "ca-4",
+          "prompt": "Qual cenário indica violação de arquitetura limpa?",
+          "options": [
+            {
+              "optionId": "a",
+              "text": "Domínio depende de interface de repositório"
+            },
+            {
+              "optionId": "b",
+              "text": "Application depende de abstrações internas"
+            },
+            {
+              "optionId": "c",
+              "text": "Domínio referencia diretamente classes do Entity Framework"
+            },
+            {
+              "optionId": "d",
+              "text": "Infraestrutura implementa interfaces de application"
+            }
+          ],
+          "correctOptionId": "c",
+          "explanationSummary": "Domínio não deve depender de frameworks externos.",
+          "explanationDetailed": "Quando domínio referencia EF Core, ele herda detalhes de persistência e perde independência. Isso dificulta testes unitários e reduz capacidade de evolução tecnológica.",
+          "topic": "Dependências",
+          "difficulty": "hard",
+          "weight": 1.75
+        },
+        {
+          "questionId": "ca-5",
+          "prompt": "Qual é um bom benefício de manter Program.cs enxuto?",
+          "options": [
+            {
+              "optionId": "a",
+              "text": "Concentrar toda regra de negócio no bootstrap"
+            },
+            {
+              "optionId": "b",
+              "text": "Facilitar manutenção, leitura e testes ao isolar composição de serviços"
+            },
+            {
+              "optionId": "c",
+              "text": "Remover necessidade de módulos"
+            },
+            {
+              "optionId": "d",
+              "text": "Evitar uso de DI"
+            }
+          ],
+          "correctOptionId": "b",
+          "explanationSummary": "Bootstrap enxuto melhora modularidade.",
+          "explanationDetailed": "Quando Program.cs fica focado em composição e middleware, regras e integrações permanecem em módulos próprios, com melhor testabilidade e evolução incremental.",
+          "topic": "Modularidade",
+          "difficulty": "easy",
+          "weight": 1
+        },
+        {
+          "questionId": "ca-6",
+          "prompt": "Ao implementar exportação de revisão, qual camada deveria conhecer o formato HTTP final?",
+          "options": [
+            {
+              "optionId": "a",
+              "text": "Domínio"
+            },
+            {
+              "optionId": "b",
+              "text": "Application"
+            },
+            {
+              "optionId": "c",
+              "text": "API (camada externa)"
+            },
+            {
+              "optionId": "d",
+              "text": "Repositório de banco"
+            }
+          ],
+          "correctOptionId": "c",
+          "explanationSummary": "Formato HTTP é preocupação da camada de entrada/saída.",
+          "explanationDetailed": "A camada API define serialização, headers e códigos de status. Application entrega dados estruturados e independentes de transporte.",
+          "topic": "Adapters",
+          "difficulty": "medium",
+          "weight": 1.25
+        },
+        {
+          "questionId": "ca-7",
+          "prompt": "Qual abordagem ajuda a testar regras de scoring com menos fragilidade?",
+          "options": [
+            {
+              "optionId": "a",
+              "text": "Testar apenas endpoints manualmente"
+            },
+            {
+              "optionId": "b",
+              "text": "Extrair serviço de scoring puro e cobrir com testes unitários"
+            },
+            {
+              "optionId": "c",
+              "text": "Depender de relógio do frontend em testes"
+            },
+            {
+              "optionId": "d",
+              "text": "Usar banco real remoto em todos os testes"
+            }
+          ],
+          "correctOptionId": "b",
+          "explanationSummary": "Serviço puro facilita testes determinísticos.",
+          "explanationDetailed": "Lógica de scoring isolada reduz dependências externas e permite validar cenários de acerto, peso e corte com rapidez, antes de cobrir integração ponta a ponta.",
+          "topic": "Testabilidade",
+          "difficulty": "medium",
+          "weight": 1.5
+        },
+        {
+          "questionId": "ca-8",
+          "prompt": "Qual trade-off comum aparece ao aplicar arquitetura limpa em MVP?",
+          "options": [
+            {
+              "optionId": "a",
+              "text": "Nenhum: sempre reduz esforço inicial"
+            },
+            {
+              "optionId": "b",
+              "text": "Mais estrutura inicial em troca de evolução mais segura"
+            },
+            {
+              "optionId": "c",
+              "text": "Impossibilidade de usar EF Core"
+            },
+            {
+              "optionId": "d",
+              "text": "Obrigatoriedade de microsserviços"
+            }
+          ],
+          "correctOptionId": "b",
+          "explanationSummary": "Há custo inicial para obter menor acoplamento futuro.",
+          "explanationDetailed": "Camadas e contratos exigem disciplina inicial, mas evitam acoplamentos caros quando o produto cresce. Em MVP, o equilíbrio é aplicar apenas o nível de separação necessário.",
+          "topic": "Trade-offs Arquiteturais",
+          "difficulty": "hard",
+          "weight": 1.5
+        }
+      ]
+    }
+  ]
+}

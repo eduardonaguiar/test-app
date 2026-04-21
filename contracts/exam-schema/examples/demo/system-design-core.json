@@ -1,0 +1,260 @@
+{
+  "schemaVersion": "1.0.0",
+  "metadata": {
+    "examId": "system-design-core-v1",
+    "title": "System Design Foundations",
+    "description": "Simulado de fundamentos sobre escalabilidade, cache, filas e consistência.",
+    "language": "pt-BR",
+    "tags": [
+      "system-design",
+      "escalabilidade",
+      "distribuidos"
+    ]
+  },
+  "durationMinutes": 55,
+  "passingScore": 78,
+  "reconnectPolicy": {
+    "enabled": true,
+    "maxReconnects": 3,
+    "gracePeriodSeconds": 180,
+    "terminateIfExceeded": true
+  },
+  "sections": [
+    {
+      "sectionId": "sd-scalability",
+      "title": "Escalabilidade e Resiliência",
+      "questions": [
+        {
+          "questionId": "sd-1",
+          "prompt": "Qual benefício principal de introduzir cache de leitura em dados quentes?",
+          "options": [
+            {
+              "optionId": "a",
+              "text": "Aumentar escrita síncrona no banco"
+            },
+            {
+              "optionId": "b",
+              "text": "Reduzir latência e carga no datastore primário"
+            },
+            {
+              "optionId": "c",
+              "text": "Eliminar necessidade de invalidação"
+            },
+            {
+              "optionId": "d",
+              "text": "Garantir consistência forte em todos os nós"
+            }
+          ],
+          "correctOptionId": "b",
+          "explanationSummary": "Cache reduz carga e melhora tempo de resposta.",
+          "explanationDetailed": "Ao atender leituras frequentes via cache, o banco primário processa menos requisições repetitivas. Isso melhora throughput, mas exige estratégia de invalidação/expiração.",
+          "topic": "Cache",
+          "difficulty": "easy",
+          "weight": 1.25
+        },
+        {
+          "questionId": "sd-2",
+          "prompt": "Quando filas assíncronas costumam ser úteis em arquitetura de sistemas?",
+          "options": [
+            {
+              "optionId": "a",
+              "text": "Quando toda operação precisa resposta imediata em linha"
+            },
+            {
+              "optionId": "b",
+              "text": "Quando é aceitável desacoplar produtor/consumidor e absorver picos de carga"
+            },
+            {
+              "optionId": "c",
+              "text": "Quando não existe processamento de background"
+            },
+            {
+              "optionId": "d",
+              "text": "Quando se quer remover retries"
+            }
+          ],
+          "correctOptionId": "b",
+          "explanationSummary": "Filas desacoplam componentes e absorvem picos.",
+          "explanationDetailed": "Mensageria permite processar tarefas fora do caminho crítico, aumentando resiliência e escalabilidade. Em troca, requer monitoramento, retries e idempotência.",
+          "topic": "Filas",
+          "difficulty": "medium",
+          "weight": 1.5
+        },
+        {
+          "questionId": "sd-3",
+          "prompt": "Qual escolha descreve melhor consistência eventual?",
+          "options": [
+            {
+              "optionId": "a",
+              "text": "Todos os nós sempre retornam o mesmo valor imediatamente"
+            },
+            {
+              "optionId": "b",
+              "text": "Atualizações podem demorar a propagar, mas convergem ao longo do tempo"
+            },
+            {
+              "optionId": "c",
+              "text": "Não há necessidade de estratégia de conflito"
+            },
+            {
+              "optionId": "d",
+              "text": "É equivalente a transações ACID distribuídas"
+            }
+          ],
+          "correctOptionId": "b",
+          "explanationSummary": "Consistência eventual aceita janela de divergência.",
+          "explanationDetailed": "Sistemas distribuídos frequentemente priorizam disponibilidade e tolerância a particionamento, aceitando propagação assíncrona de estado e convergência posterior.",
+          "topic": "Consistência",
+          "difficulty": "medium",
+          "weight": 1.5
+        },
+        {
+          "questionId": "sd-4",
+          "prompt": "Qual técnica ajuda a evitar sobrecarga em dependências durante falhas parciais?",
+          "options": [
+            {
+              "optionId": "a",
+              "text": "Aumentar timeout indefinidamente"
+            },
+            {
+              "optionId": "b",
+              "text": "Circuit breaker com fallback e limites de retry"
+            },
+            {
+              "optionId": "c",
+              "text": "Repetir requisição sem limite"
+            },
+            {
+              "optionId": "d",
+              "text": "Desligar logs de erro"
+            }
+          ],
+          "correctOptionId": "b",
+          "explanationSummary": "Circuit breaker limita efeito cascata.",
+          "explanationDetailed": "Ao interromper chamadas para um serviço instável e aplicar fallback, o sistema evita exaustão de recursos e reduz propagação de falhas.",
+          "topic": "Resiliência",
+          "difficulty": "hard",
+          "weight": 1.75
+        }
+      ]
+    },
+    {
+      "sectionId": "sd-data",
+      "title": "Dados e Distribuição",
+      "questions": [
+        {
+          "questionId": "sd-5",
+          "prompt": "Qual motivo comum para particionar dados (sharding)?",
+          "options": [
+            {
+              "optionId": "a",
+              "text": "Aumentar dependência de um único nó"
+            },
+            {
+              "optionId": "b",
+              "text": "Distribuir carga e capacidade além de um único servidor"
+            },
+            {
+              "optionId": "c",
+              "text": "Eliminar necessidade de chave de partição"
+            },
+            {
+              "optionId": "d",
+              "text": "Trocar backups por replicação"
+            }
+          ],
+          "correctOptionId": "b",
+          "explanationSummary": "Sharding escala horizontalmente dados e tráfego.",
+          "explanationDetailed": "Com partição, cada nó atende subconjunto de dados. A estratégia de chave é crítica para evitar hotspots e garantir balanceamento consistente.",
+          "topic": "Particionamento",
+          "difficulty": "medium",
+          "weight": 1.5
+        },
+        {
+          "questionId": "sd-6",
+          "prompt": "Em APIs de alto tráfego, por que idempotency key é útil em operações críticas?",
+          "options": [
+            {
+              "optionId": "a",
+              "text": "Para permitir processamento duplicado com segurança"
+            },
+            {
+              "optionId": "b",
+              "text": "Para evitar efeitos colaterais duplicados em retries do cliente"
+            },
+            {
+              "optionId": "c",
+              "text": "Para substituir autenticação"
+            },
+            {
+              "optionId": "d",
+              "text": "Para eliminar logs"
+            }
+          ],
+          "correctOptionId": "b",
+          "explanationSummary": "Idempotency key protege contra duplicidade.",
+          "explanationDetailed": "Falhas de rede e retries podem reenviar a mesma requisição. A chave idempotente permite reconhecer repetição e devolver resultado consistente sem repetir a ação de negócio.",
+          "topic": "Idempotência",
+          "difficulty": "hard",
+          "weight": 1.75
+        },
+        {
+          "questionId": "sd-7",
+          "prompt": "Qual métrica é mais diretamente relacionada à experiência percebida do usuário final?",
+          "options": [
+            {
+              "optionId": "a",
+              "text": "Uso médio de CPU do banco"
+            },
+            {
+              "optionId": "b",
+              "text": "Latência de resposta (p95/p99) dos endpoints críticos"
+            },
+            {
+              "optionId": "c",
+              "text": "Quantidade de comentários no código"
+            },
+            {
+              "optionId": "d",
+              "text": "Número de branches abertas"
+            }
+          ],
+          "correctOptionId": "b",
+          "explanationSummary": "Latência de cauda impacta percepção real de performance.",
+          "explanationDetailed": "Usuários sentem principalmente tempos de resposta nos caminhos principais. Monitorar p95/p99 evita mascarar experiências ruins escondidas pela média.",
+          "topic": "Observabilidade",
+          "difficulty": "easy",
+          "weight": 1.25
+        },
+        {
+          "questionId": "sd-8",
+          "prompt": "Qual risco aumenta quando TTL de cache é longo demais para dados altamente mutáveis?",
+          "options": [
+            {
+              "optionId": "a",
+              "text": "Uso excessivo de CPU no cliente"
+            },
+            {
+              "optionId": "b",
+              "text": "Servir dados desatualizados por mais tempo"
+            },
+            {
+              "optionId": "c",
+              "text": "Inexistência de cache misses"
+            },
+            {
+              "optionId": "d",
+              "text": "Quebra de autenticação JWT"
+            }
+          ],
+          "correctOptionId": "b",
+          "explanationSummary": "TTL elevado amplia janela de staleness.",
+          "explanationDetailed": "Em dados mutáveis, TTL longo pode gerar inconsistência percebida. É necessário equilibrar desempenho com frescor, usando invalidação ativa quando necessário.",
+          "topic": "Cache",
+          "difficulty": "medium",
+          "weight": 1.5
+        }
+      ]
+    }
+  ]
+}
