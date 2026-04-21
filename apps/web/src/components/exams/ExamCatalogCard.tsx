@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../ui/card';
 import { createAttempt, type ExamSummaryResponse } from '../../generated/api-contract';
+import { useToast } from '../../hooks/useToast';
 
 export type ExamCatalogDifficulty = 'easy' | 'medium' | 'hard';
 export type ExamCatalogStatus = 'not-started' | 'in-progress' | 'completed';
@@ -80,6 +82,7 @@ export function ExamCatalogCard({ exam, difficulty, status }: ExamCatalogCardPro
   const navigate = useNavigate();
   const [isStarting, setIsStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
+  const toast = useToast();
 
   async function handleStartExam() {
     setIsStarting(true);
@@ -87,9 +90,11 @@ export function ExamCatalogCard({ exam, difficulty, status }: ExamCatalogCardPro
 
     try {
       const attempt = await createAttempt({ examId: exam.examId });
+      toast.info({ title: 'Tentativa iniciada', description: 'Ambiente da prova preparado com sucesso.' });
       navigate(`/attempts/${attempt.attemptId}`);
     } catch {
       setStartError('Não foi possível iniciar este simulado agora.');
+      toast.error({ title: 'Falha ao iniciar simulado', description: 'Tente novamente em alguns segundos.' });
       setIsStarting(false);
     }
   }
@@ -128,14 +133,9 @@ export function ExamCatalogCard({ exam, difficulty, status }: ExamCatalogCardPro
       </CardContent>
 
       <CardFooter className="catalog-card__footer">
-        <button
-          type="button"
-          className="ui-button ui-button--default ui-button--default-size"
-          onClick={handleStartExam}
-          disabled={isStarting}
-        >
-          {isStarting ? 'Iniciando…' : 'Iniciar'}
-        </button>
+        <Button onClick={handleStartExam} isLoading={isStarting} loadingLabel="Iniciando prova...">
+          Iniciar
+        </Button>
         <Link className="ui-button ui-button--outline ui-button--default-size" to={`/exams/${exam.examId}`}>
           Ver detalhes
         </Link>

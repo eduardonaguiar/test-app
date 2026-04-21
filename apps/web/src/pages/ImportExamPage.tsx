@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FilePicker } from '../components/import/FilePicker';
 import { ImportStatusPanel } from '../components/import/ImportStatusPanel';
@@ -6,6 +6,7 @@ import { PageHeader } from '../components/layout/PageHeader';
 import { PageSection } from '../components/layout/PageSection';
 import { Button } from '../components/ui/button';
 import { useExamImport } from '../hooks/useExamImport';
+import { useToast } from '../hooks/useToast';
 
 type ParseState = 'idle' | 'parsing' | 'parseError' | 'ready';
 
@@ -24,6 +25,30 @@ export function ImportExamPage() {
   const [parsedPayload, setParsedPayload] = useState<unknown>(null);
   const [parseFeedback, setParseFeedback] = useState<ParseFeedback>({ state: 'idle', message: null });
   const { isSubmitting, successResult, failure, submitImport, reset } = useExamImport();
+  const toast = useToast();
+
+
+  useEffect(() => {
+    if (!successResult) {
+      return;
+    }
+
+    toast.success({
+      title: 'Prova importada com sucesso',
+      description: `${successResult.title} já está disponível no catálogo.`,
+    });
+  }, [successResult, toast]);
+
+  useEffect(() => {
+    if (!failure) {
+      return;
+    }
+
+    toast.error({
+      title: 'Falha ao importar prova',
+      description: failure.kind === 'validation' ? 'Revise os erros de validação e tente novamente.' : failure.message,
+    });
+  }, [failure, toast]);
 
   async function processFile(file: File | null) {
     setSelectedFile(file);
@@ -112,8 +137,8 @@ export function ImportExamPage() {
 
       <PageSection>
         <div className="inline-links">
-          <Button disabled={parseFeedback.state !== 'ready' || isSubmitting} onClick={handleImport}>
-            {isSubmitting ? 'Importando...' : 'Validar e importar prova'}
+          <Button disabled={parseFeedback.state !== 'ready' || isSubmitting} isLoading={isSubmitting} loadingLabel="Importando prova..." onClick={handleImport}>
+            Validar e importar prova
           </Button>
           <Button variant="outline" disabled={!selectedFile || isSubmitting} onClick={handleResetAll}>
             Limpar seleção

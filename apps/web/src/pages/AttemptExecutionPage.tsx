@@ -11,6 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '../components/ui/dialog';
+import { LoadingOverlay } from '../components/feedback/LoadingOverlay';
 import { PageLoading } from '../components/feedback/PageLoading';
 import {
   getAttemptState,
@@ -19,6 +20,7 @@ import {
   type AttemptExecutionQuestionResponse,
   type AttemptExecutionStateResponse,
 } from '../generated/api-contract';
+import { useToast } from '../hooks/useToast';
 
 type AttemptExecutionViewModel = {
   attempt: AttemptExecutionStateResponse;
@@ -106,6 +108,7 @@ export function AttemptExecutionPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [autosaveState, setAutosaveState] = useState<AutosaveState>('idle');
+  const toast = useToast();
   const pendingAnswersRef = useRef<Map<string, string>>(new Map());
   const isSyncingRef = useRef(false);
 
@@ -146,7 +149,7 @@ export function AttemptExecutionPage() {
       controller.abort();
       window.clearInterval(intervalId);
     };
-  }, [attemptId]);
+  }, [attemptId, toast]);
 
   useEffect(() => {
     if (!attemptId) {
@@ -185,7 +188,7 @@ export function AttemptExecutionPage() {
     return () => {
       window.clearInterval(syncIntervalId);
     };
-  }, [attemptId]);
+  }, [attemptId, toast]);
 
   const currentQuestion = useMemo<AttemptExecutionQuestionResponse | null>(() => {
     if (!state?.attempt.questions.length) {
@@ -258,7 +261,10 @@ export function AttemptExecutionPage() {
 
     try {
       await submitAttempt(attemptId);
+      toast.success({ title: 'Prova enviada', description: 'Seu resultado final está pronto para revisão.' });
       navigate(`/attempts/${attemptId}/result`);
+    } catch {
+      toast.error({ title: 'Falha ao enviar prova', description: 'Não foi possível finalizar agora. Tente novamente.' });
     } finally {
       setSubmitting(false);
     }
@@ -273,7 +279,8 @@ export function AttemptExecutionPage() {
   }
 
   return (
-    <div className="exam-session">
+    <div className="exam-session exam-session--surface">
+      <LoadingOverlay active={submitting} label="Enviando prova e calculando resultado..." />
       <header className="exam-session__header">
         <div>
           <p className="exam-session__eyebrow">Ambiente de prova</p>
@@ -372,7 +379,7 @@ export function AttemptExecutionPage() {
 
               <DialogRoot>
                 <DialogTrigger className="ui-button ui-button--destructive ui-button--default-size" disabled={!canSubmit}>
-                  {submitting ? 'Enviando...' : 'Enviar prova'}
+                  Enviar prova
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
@@ -383,7 +390,7 @@ export function AttemptExecutionPage() {
                   </DialogHeader>
                   <DialogFooter>
                     <DialogClose className="ui-button ui-button--outline ui-button--default-size">Voltar para revisão</DialogClose>
-                    <Button variant="destructive" onClick={handleSubmitAttempt} disabled={!canSubmit}>
+                    <Button variant="destructive" onClick={handleSubmitAttempt} disabled={!canSubmit} isLoading={submitting} loadingLabel="Enviando prova...">
                       Confirmar envio
                     </Button>
                   </DialogFooter>
