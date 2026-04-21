@@ -208,6 +208,12 @@ Esse comando sobe:
 - Publicar checklist de release local (migrations + seed + smoke tests).
 - Consolidar guias operacionais em `docs/` (troubleshooting de ambiente e dados).
 
+## Guias de referência
+
+- Arquitetura: `docs/architecture.md`
+- Formato de prova JSON: `docs/exam-json-format.md`
+- Acessibilidade prática (UX-9): `docs/accessibility-guidelines.md`
+
 ---
 
 Se você está chegando agora no projeto, siga a ordem recomendada:
