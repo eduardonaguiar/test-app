@@ -1650,6 +1650,8 @@ public sealed class AttemptServiceTests
                 "Section A",
                 "Q-1",
                 "Pergunta original",
+                "Networking",
+                "medium",
                 optionAId,
                 "A",
                 "Resposta original",

@@ -75,6 +75,8 @@ public sealed record AttemptResultQuestionReviewSnapshot(
     string SectionTitle,
     string QuestionCode,
     string Prompt,
+    string Topic,
+    string Difficulty,
     Guid? UserSelectedOptionId,
     string? UserSelectedOptionCode,
     string? UserSelectedOptionText,

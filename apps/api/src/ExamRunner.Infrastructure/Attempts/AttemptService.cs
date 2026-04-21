@@ -496,6 +496,8 @@ public sealed class AttemptService(
                         section.Title,
                         question.QuestionCode,
                         question.Prompt,
+                        question.Topic,
+                        question.Difficulty,
                         userOption?.Id,
                         userOption?.OptionCode,
                         userOption?.Text,
