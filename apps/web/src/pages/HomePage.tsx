@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { PageHeader } from '../components/layout/PageHeader';
+import { PageSection } from '../components/layout/PageSection';
 import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
@@ -36,17 +38,27 @@ export function HomePage() {
   }, []);
 
   return (
-    <main className="page stack-md">
-      <header className="page-header">
-        <h1>Provas importadas</h1>
-        <p className="subtitle">Listagem carregada diretamente do backend.</p>
-      </header>
+    <div className="stack-md">
+      <PageHeader
+        title="Simulados"
+        description="Catálogo de provas importadas e prontas para tentativa."
+        actions={
+          <Link className="ui-button ui-button--default ui-button--default-size" to="/exams/import">
+            Importar prova
+          </Link>
+        }
+      />
 
-      <div className="inline-links">
-        <Link className="ui-button ui-button--default ui-button--default-size" to="/exams/import">Importar nova prova</Link>
-        <Link className="ui-button ui-button--outline ui-button--default-size" to="/history">Ver histórico de tentativas</Link>
-        <Link className="ui-button ui-button--outline ui-button--default-size" to="/dashboard">Ver dashboard de desempenho</Link>
-      </div>
+      <PageSection>
+        <div className="inline-links">
+          <Link className="ui-button ui-button--outline ui-button--default-size" to="/history">
+            Ver histórico de tentativas
+          </Link>
+          <Link className="ui-button ui-button--outline ui-button--default-size" to="/dashboard">
+            Ver dashboard de desempenho
+          </Link>
+        </div>
+      </PageSection>
 
       {errorMessage ? (
         <Alert variant="destructive">
@@ -54,54 +66,58 @@ export function HomePage() {
           <AlertDescription>{errorMessage}</AlertDescription>
         </Alert>
       ) : state ? (
-        <section aria-label="Lista de provas" className="stack-md">
+        <PageSection ariaLabel="Lista de provas">
           {state.exams.length === 0 ? (
             <Alert>
               <AlertTitle>Nenhuma prova encontrada</AlertTitle>
               <AlertDescription>Importe a primeira prova para começar a estudar.</AlertDescription>
             </Alert>
           ) : (
-            state.exams.map((exam) => (
-              <Card key={exam.examId}>
-                <CardHeader>
-                  <CardTitle>{exam.title}</CardTitle>
-                  <CardDescription>{exam.description ?? 'Sem descrição informada.'}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <dl className="meta-grid">
-                    <div>
-                      <dt>Duração</dt>
-                      <dd>{exam.durationMinutes} min</dd>
-                    </div>
-                    <div>
-                      <dt>Passing score</dt>
-                      <dd>{exam.passingScorePercentage}%</dd>
-                    </div>
-                    <div>
-                      <dt>Questões</dt>
-                      <dd>{exam.questionCount ?? '—'}</dd>
-                    </div>
-                    <div>
-                      <dt>Status</dt>
-                      <dd>
-                        <Badge variant="secondary">Pronta para tentativa</Badge>
-                      </dd>
-                    </div>
-                  </dl>
-                </CardContent>
-                <CardFooter>
-                  <Link className="ui-button ui-button--default ui-button--default-size" to={`/exams/${exam.examId}`}>Abrir detalhes</Link>
-                </CardFooter>
-              </Card>
-            ))
+            <div className="stack-md">
+              {state.exams.map((exam) => (
+                <Card key={exam.examId}>
+                  <CardHeader>
+                    <CardTitle>{exam.title}</CardTitle>
+                    <CardDescription>{exam.description ?? 'Sem descrição informada.'}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <dl className="meta-grid">
+                      <div>
+                        <dt>Duração</dt>
+                        <dd>{exam.durationMinutes} min</dd>
+                      </div>
+                      <div>
+                        <dt>Passing score</dt>
+                        <dd>{exam.passingScorePercentage}%</dd>
+                      </div>
+                      <div>
+                        <dt>Questões</dt>
+                        <dd>{exam.questionCount ?? '—'}</dd>
+                      </div>
+                      <div>
+                        <dt>Status</dt>
+                        <dd>
+                          <Badge variant="secondary">Pronta para tentativa</Badge>
+                        </dd>
+                      </div>
+                    </dl>
+                  </CardContent>
+                  <CardFooter>
+                    <Link className="ui-button ui-button--default ui-button--default-size" to={`/exams/${exam.examId}`}>
+                      Abrir detalhes
+                    </Link>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
           )}
-        </section>
+        </PageSection>
       ) : (
         <Alert>
           <AlertTitle>Carregando provas</AlertTitle>
           <AlertDescription>Buscando catálogo de provas importadas...</AlertDescription>
         </Alert>
       )}
-    </main>
+    </div>
   );
 }

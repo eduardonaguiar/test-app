@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { PageHeader } from '../components/layout/PageHeader';
+import { PageSection } from '../components/layout/PageSection';
+import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
+import { Badge } from '../components/ui/badge';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
 
 type AttemptHistoryItemResponse = {
   attemptId: string;
@@ -86,76 +91,95 @@ export function HistoryPage() {
   }, []);
 
   return (
-    <main className="page">
-      <Link to="/" className="back-link">
-        ← Voltar para provas
-      </Link>
-
-      <header className="exam-details-header">
-        <h1>Histórico de tentativas</h1>
-        <p className="subtitle">Revise tentativas anteriores e abra os resultados finalizados.</p>
-      </header>
+    <div className="stack-md">
+      <PageHeader
+        title="Histórico de tentativas"
+        description="Revise tentativas anteriores e abra os resultados finalizados."
+        actions={
+          <Link to="/" className="ui-button ui-button--outline ui-button--default-size">
+            Voltar para simulados
+          </Link>
+        }
+      />
 
       {errorMessage ? (
-        <p>{errorMessage}</p>
+        <Alert variant="destructive">
+          <AlertTitle>Falha ao carregar histórico</AlertTitle>
+          <AlertDescription>{errorMessage}</AlertDescription>
+        </Alert>
       ) : history ? (
-        <section aria-label="Histórico de tentativas" className="history-list">
+        <PageSection ariaLabel="Histórico de tentativas">
           {history.items.length === 0 ? (
-            <p>Nenhuma tentativa finalizada ou em andamento foi registrada até o momento.</p>
+            <Alert>
+              <AlertTitle>Nenhuma tentativa registrada</AlertTitle>
+              <AlertDescription>Nenhuma tentativa finalizada ou em andamento foi registrada até o momento.</AlertDescription>
+            </Alert>
           ) : (
-            history.items.map((attempt) => {
-              const finalized = canOpenResult(attempt.status);
+            <div className="stack-md">
+              {history.items.map((attempt) => {
+                const finalized = canOpenResult(attempt.status);
 
-              return (
-                <article key={attempt.attemptId} className="exam-card">
-                  <header>
-                    <h2>{attempt.examTitle}</h2>
-                    <p className="exam-description">Tentativa {attempt.attemptId}</p>
-                  </header>
+                return (
+                  <Card key={attempt.attemptId}>
+                    <CardHeader>
+                      <CardTitle>{attempt.examTitle}</CardTitle>
+                      <CardDescription>Tentativa {attempt.attemptId}</CardDescription>
+                    </CardHeader>
 
-                  <dl className="exam-metadata result-metadata">
-                    <div>
-                      <dt>Status</dt>
-                      <dd>{attempt.status}</dd>
-                    </div>
-                    <div>
-                      <dt>Data</dt>
-                      <dd>{formatDateTime(attempt.attemptedAt)}</dd>
-                    </div>
-                    <div>
-                      <dt>Nota</dt>
-                      <dd>{attempt.score ?? '—'}</dd>
-                    </div>
-                    <div>
-                      <dt>Percentual</dt>
-                      <dd>{normalizePercentage(attempt.percentage)}</dd>
-                    </div>
-                    <div>
-                      <dt>Tempo gasto</dt>
-                      <dd>{formatDuration(attempt.timeSpentSeconds)}</dd>
-                    </div>
-                  </dl>
+                    <CardContent>
+                      <dl className="meta-grid">
+                        <div>
+                          <dt>Status</dt>
+                          <dd>
+                            <Badge variant={finalized ? 'success' : 'warning'}>{attempt.status}</Badge>
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>Data</dt>
+                          <dd>{formatDateTime(attempt.attemptedAt)}</dd>
+                        </div>
+                        <div>
+                          <dt>Nota</dt>
+                          <dd>{attempt.score ?? '—'}</dd>
+                        </div>
+                        <div>
+                          <dt>Percentual</dt>
+                          <dd>{normalizePercentage(attempt.percentage)}</dd>
+                        </div>
+                        <div>
+                          <dt>Tempo gasto</dt>
+                          <dd>{formatDuration(attempt.timeSpentSeconds)}</dd>
+                        </div>
+                      </dl>
+                    </CardContent>
 
-                  <div className="history-actions">
-                    <Link className="details-button" to={`/attempts/${attempt.attemptId}`}>
-                      Abrir tentativa
-                    </Link>
-                    {finalized ? (
-                      <Link className="details-button secondary" to={`/attempts/${attempt.attemptId}/result`}>
-                        Abrir revisão completa
+                    <CardFooter className="inline-links">
+                      <Link className="ui-button ui-button--default ui-button--default-size" to={`/attempts/${attempt.attemptId}`}>
+                        Abrir tentativa
                       </Link>
-                    ) : (
-                      <span className="history-hint">Finalize a tentativa para liberar a revisão completa.</span>
-                    )}
-                  </div>
-                </article>
-              );
-            })
+                      {finalized ? (
+                        <Link
+                          className="ui-button ui-button--outline ui-button--default-size"
+                          to={`/attempts/${attempt.attemptId}/result`}
+                        >
+                          Abrir revisão completa
+                        </Link>
+                      ) : (
+                        <span className="subtitle">Finalize a tentativa para liberar a revisão completa.</span>
+                      )}
+                    </CardFooter>
+                  </Card>
+                );
+              })}
+            </div>
           )}
-        </section>
+        </PageSection>
       ) : (
-        <p>Carregando histórico…</p>
+        <Alert>
+          <AlertTitle>Carregando histórico</AlertTitle>
+          <AlertDescription>Buscando tentativas registradas...</AlertDescription>
+        </Alert>
       )}
-    </main>
+    </div>
   );
 }

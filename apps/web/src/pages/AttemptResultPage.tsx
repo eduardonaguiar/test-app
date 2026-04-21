@@ -198,7 +198,7 @@ export function AttemptResultPage() {
   }
 
   return (
-    <main className="page">
+    <div className="stack-md">
       <div className="inline-links">
         <Link to={`/attempts/${attemptId ?? ''}`} className="back-link">
           ← Voltar para execução
@@ -387,6 +387,6 @@ export function AttemptResultPage() {
       ) : (
         <p>Carregando resultado da tentativa…</p>
       )}
-    </main>
+    </div>
   );
 }

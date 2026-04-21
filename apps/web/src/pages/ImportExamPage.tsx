@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { PageHeader } from '../components/layout/PageHeader';
+import { PageSection } from '../components/layout/PageSection';
 import { FilePicker } from '../components/import/FilePicker';
 import { ImportStatusPanel } from '../components/import/ImportStatusPanel';
 import { Button } from '../components/ui/button';
@@ -53,38 +55,44 @@ export function ImportExamPage() {
   }
 
   return (
-    <main className="page stack-md">
-      <Link className="ui-button ui-button--ghost ui-button--sm" to="/">
-        ← Voltar para provas
-      </Link>
-
-      <header className="page-header">
-        <h1>Importar prova</h1>
-        <p className="subtitle">
-          Faça upload de um arquivo JSON compatível com o schema oficial de provas. Em caso de erro, o sistema
-          exibirá detalhes de validação para facilitar correção.
-        </p>
-      </header>
-
-      <FilePicker
-        selectedFile={selectedFile}
-        fileError={fileError}
-        isSubmitting={isSubmitting}
-        onFileSelected={handleFileSelected}
+    <div className="stack-md">
+      <PageHeader
+        title="Importar prova"
+        description="Faça upload de um arquivo JSON compatível com o schema oficial de provas."
+        breadcrumbs={[
+          { label: 'Simulados', to: '/' },
+          { label: 'Importar prova' },
+        ]}
+        actions={
+          <Link className="ui-button ui-button--outline ui-button--default-size" to="/">
+            Voltar para simulados
+          </Link>
+        }
       />
 
-      <section>
+      <PageSection>
+        <FilePicker
+          selectedFile={selectedFile}
+          fileError={fileError}
+          isSubmitting={isSubmitting}
+          onFileSelected={handleFileSelected}
+        />
+      </PageSection>
+
+      <PageSection>
         <Button disabled={!selectedFile || isSubmitting} onClick={handleImport}>
           {isSubmitting ? 'Importando...' : 'Importar prova'}
         </Button>
-      </section>
+      </PageSection>
 
-      <ImportStatusPanel
-        isSubmitting={isSubmitting}
-        successResult={successResult}
-        failure={failure}
-        onReset={handleResetAll}
-      />
-    </main>
+      <PageSection>
+        <ImportStatusPanel
+          isSubmitting={isSubmitting}
+          successResult={successResult}
+          failure={failure}
+          onReset={handleResetAll}
+        />
+      </PageSection>
+    </div>
   );
 }

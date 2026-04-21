@@ -224,7 +224,7 @@ export function AttemptExecutionPage() {
   }
 
   return (
-    <main className="page">
+    <div className="stack-md">
       <Link to="/" className="back-link">
         ← Voltar para provas
       </Link>
@@ -335,6 +335,6 @@ export function AttemptExecutionPage() {
       ) : (
         <p>Carregando estado da tentativa…</p>
       )}
-    </main>
+    </div>
   );
 }

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { PageHeader } from '../components/layout/PageHeader';
+import { PageSection } from '../components/layout/PageSection';
 import { createAttempt, type ExamDetailResponse } from '../generated/api-contract';
 
 type ReconnectPolicyViewModel = {
@@ -142,21 +144,23 @@ export function ExamDetailsPage() {
   }
 
   return (
-    <main className="page">
-      <Link to="/" className="back-link">
-        ← Voltar para provas
-      </Link>
-
+    <div className="stack-md">
       {errorMessage ? (
         <p>{errorMessage}</p>
       ) : state ? (
         <>
-          <header className="exam-details-header">
-            <h1>{state.exam.title}</h1>
-            <p className="subtitle">{state.exam.description}</p>
-          </header>
+          <PageHeader
+            title={state.exam.title}
+            description={state.exam.description}
+            breadcrumbs={[{ label: 'Simulados', to: '/' }, { label: state.exam.title }]}
+            actions={
+              <Link to="/" className="ui-button ui-button--outline ui-button--default-size">
+                Voltar para simulados
+              </Link>
+            }
+          />
 
-          <section className="exam-card" aria-label="Detalhes gerais da prova">
+          <PageSection ariaLabel="Detalhes gerais da prova">
             <dl className="exam-metadata">
               <div>
                 <dt>Duração</dt>
@@ -175,24 +179,21 @@ export function ExamDetailsPage() {
                 <dd>{totalQuestions}</dd>
               </div>
             </dl>
-          </section>
+          </PageSection>
 
-          <section className="exam-card" aria-label="Instruções da prova">
-            <h2>Instruções</h2>
+          <PageSection title="Instruções" ariaLabel="Instruções da prova">
             <ul className="instruction-list">
               <li>Leia cada questão com atenção antes de responder.</li>
               <li>O cronômetro oficial é controlado pelo backend.</li>
               <li>Ao finalizar, revise suas respostas antes de enviar.</li>
             </ul>
-          </section>
+          </PageSection>
 
-          <section className="exam-card" aria-label="Política de reconexão">
-            <h2>Política de reconexão</h2>
+          <PageSection title="Política de reconexão" ariaLabel="Política de reconexão">
             <p>{reconnectDescription}</p>
-          </section>
+          </PageSection>
 
-          <section className="exam-card" aria-label="Resumo das seções">
-            <h2>Seções resumidas</h2>
+          <PageSection title="Seções resumidas" ariaLabel="Resumo das seções">
             <ol className="section-summary-list">
               {state.exam.sections.map((section) => (
                 <li key={section.sectionId} className="section-summary-item">
@@ -204,7 +205,7 @@ export function ExamDetailsPage() {
                 </li>
               ))}
             </ol>
-          </section>
+          </PageSection>
 
           <section className="exam-actions">
             <button
@@ -220,6 +221,6 @@ export function ExamDetailsPage() {
       ) : (
         <p>Carregando detalhes da prova…</p>
       )}
-    </main>
+    </div>
   );
 }
