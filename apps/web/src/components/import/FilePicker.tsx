@@ -50,6 +50,7 @@ function parseStateBadge(parseState: ParseFeedback['state']) {
 export function FilePicker({ selectedFile, parseFeedback, isSubmitting, onFileSelected, onRemoveFile }: FilePickerProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileSummaryId = 'exam-json-file-summary';
 
   return (
     <Card aria-label="Seleção do arquivo JSON">
@@ -73,11 +74,20 @@ export function FilePicker({ selectedFile, parseFeedback, isSubmitting, onFileSe
           }}
           disabled={isSubmitting}
         />
+        <label htmlFor="exam-json" className="sr-only">
+          Selecionar arquivo JSON de prova
+        </label>
 
         <button
           type="button"
           className={`import-dropzone ${isDragOver ? 'is-drag-over' : ''}`}
           onClick={() => inputRef.current?.click()}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              inputRef.current?.click();
+            }
+          }}
           onDragEnter={(event) => {
             event.preventDefault();
             setIsDragOver(true);
@@ -97,6 +107,7 @@ export function FilePicker({ selectedFile, parseFeedback, isSubmitting, onFileSe
             onFileSelected(file);
           }}
           disabled={isSubmitting}
+          aria-describedby={fileSummaryId}
         >
           <span className="import-dropzone__title">Arraste e solte o arquivo JSON aqui</span>
           <span className="import-dropzone__subtitle">ou clique para selecionar do seu computador</span>
@@ -113,6 +124,10 @@ export function FilePicker({ selectedFile, parseFeedback, isSubmitting, onFileSe
             </Button>
           ) : null}
         </div>
+
+        <p id={fileSummaryId} className="sr-only">
+          {selectedFile ? `Arquivo selecionado: ${selectedFile.name}.` : 'Nenhum arquivo selecionado.'}
+        </p>
 
         {selectedFile ? (
           <dl className="meta-grid">

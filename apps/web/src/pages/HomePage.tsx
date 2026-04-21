@@ -192,42 +192,51 @@ export function HomePage() {
           ) : (
             <div className="catalog-layout">
               <div className="catalog-toolbar" role="search">
-                <Input
-                  aria-label="Buscar simulados"
-                  placeholder="Buscar por título ou descrição"
-                  value={searchTerm}
-                  onChange={(event) => {
-                    setSearchTerm(event.target.value);
-                  }}
-                />
+                <label className="filter-field" htmlFor="catalog-search">
+                  <span>Busca</span>
+                  <Input
+                    id="catalog-search"
+                    placeholder="Buscar por título ou descrição"
+                    value={searchTerm}
+                    onChange={(event) => {
+                      setSearchTerm(event.target.value);
+                    }}
+                  />
+                </label>
 
-                <select
-                  aria-label="Filtrar por dificuldade"
-                  className="ui-input catalog-toolbar__select"
-                  value={difficultyFilter}
-                  onChange={(event) => {
-                    setDifficultyFilter(event.target.value as 'all' | ExamCatalogDifficulty);
-                  }}
-                >
-                  <option value="all">Todas dificuldades</option>
-                  <option value="easy">Easy</option>
-                  <option value="medium">Medium</option>
-                  <option value="hard">Hard</option>
-                </select>
+                <label className="filter-field" htmlFor="catalog-difficulty-filter">
+                  <span>Dificuldade</span>
+                  <select
+                    id="catalog-difficulty-filter"
+                    className="ui-input catalog-toolbar__select"
+                    value={difficultyFilter}
+                    onChange={(event) => {
+                      setDifficultyFilter(event.target.value as 'all' | ExamCatalogDifficulty);
+                    }}
+                  >
+                    <option value="all">Todas dificuldades</option>
+                    <option value="easy">Easy</option>
+                    <option value="medium">Medium</option>
+                    <option value="hard">Hard</option>
+                  </select>
+                </label>
 
-                <select
-                  aria-label="Filtrar por status"
-                  className="ui-input catalog-toolbar__select"
-                  value={statusFilter}
-                  onChange={(event) => {
-                    setStatusFilter(event.target.value as 'all' | ExamCatalogStatus);
-                  }}
-                >
-                  <option value="all">Todos status</option>
-                  <option value="not-started">Não iniciado</option>
-                  <option value="in-progress">Em progresso</option>
-                  <option value="completed">Concluído</option>
-                </select>
+                <label className="filter-field" htmlFor="catalog-status-filter">
+                  <span>Status</span>
+                  <select
+                    id="catalog-status-filter"
+                    className="ui-input catalog-toolbar__select"
+                    value={statusFilter}
+                    onChange={(event) => {
+                      setStatusFilter(event.target.value as 'all' | ExamCatalogStatus);
+                    }}
+                  >
+                    <option value="all">Todos status</option>
+                    <option value="not-started">Não iniciado</option>
+                    <option value="in-progress">Em progresso</option>
+                    <option value="completed">Concluído</option>
+                  </select>
+                </label>
               </div>
 
               {visibleExams.length === 0 ? (

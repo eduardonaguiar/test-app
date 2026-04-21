@@ -34,18 +34,26 @@ export function ReviewFilterToolbar({
 
       <div className="review-filter-toolbar__content">
         <div className="review-filter-toolbar__fields">
-          <label className="filter-field">
+          <label className="filter-field" htmlFor="review-filter-status">
             <span>Status</span>
-            <select value={filters.status} onChange={(event) => onUpdateFilter('status', event.target.value as QuestionReviewFilterState['status'])}>
+            <select
+              id="review-filter-status"
+              value={filters.status}
+              onChange={(event) => onUpdateFilter('status', event.target.value as QuestionReviewFilterState['status'])}
+            >
               <option value="all">Todas</option>
               <option value="correct">Corretas</option>
               <option value="incorrect">Incorretas</option>
             </select>
           </label>
 
-          <label className="filter-field">
+          <label className="filter-field" htmlFor="review-filter-topic">
             <span>Tópico</span>
-            <select value={filters.topic} onChange={(event) => onUpdateFilter('topic', event.target.value)}>
+            <select
+              id="review-filter-topic"
+              value={filters.topic}
+              onChange={(event) => onUpdateFilter('topic', event.target.value)}
+            >
               <option value="all">Todos</option>
               {availableTopics.map((topic) => (
                 <option key={topic} value={topic}>
@@ -55,9 +63,13 @@ export function ReviewFilterToolbar({
             </select>
           </label>
 
-          <label className="filter-field">
+          <label className="filter-field" htmlFor="review-filter-difficulty">
             <span>Dificuldade</span>
-            <select value={filters.difficulty} onChange={(event) => onUpdateFilter('difficulty', event.target.value as ReviewDifficultyFilter)}>
+            <select
+              id="review-filter-difficulty"
+              value={filters.difficulty}
+              onChange={(event) => onUpdateFilter('difficulty', event.target.value as ReviewDifficultyFilter)}
+            >
               <option value="all">Todas</option>
               <option value="easy">Easy</option>
               <option value="medium">Medium</option>

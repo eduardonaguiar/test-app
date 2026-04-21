@@ -20,7 +20,7 @@
   --warning-foreground: #ffffff;
   --border: #cbd5e1;
   --input: #cbd5e1;
-  --ring: #2563eb;
+  --ring: #1d4ed8;
 
   --radius-sm: 0.375rem;
   --radius-md: 0.5rem;
@@ -46,6 +46,36 @@ body {
 }
 
 a { color: inherit; }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 100;
+  background: var(--surface);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  padding: 0.5rem 0.75rem;
+  transform: translateY(-200%);
+}
+
+.skip-link:focus-visible {
+  transform: translateY(0);
+}
 
 .app-shell {
   min-height: 100vh;
@@ -331,7 +361,7 @@ a { color: inherit; }
 .inline-links { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
 
 .ui-button { border: 1px solid transparent; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; transition: background-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard), transform var(--motion-fast) var(--ease-standard), box-shadow var(--motion-base) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard); text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 0.45rem; }
-.ui-button:focus-visible,.ui-input:focus-visible,.ui-textarea:focus-visible,.ui-tabs__trigger:focus-visible,.main-nav__link:focus-visible,.question-nav-button:focus-visible,.option-item:focus-within,.details-button:focus-visible,.toast__close:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.ui-button:focus-visible,.ui-input:focus-visible,.ui-textarea:focus-visible,.ui-tabs__trigger:focus-visible,.main-nav__link:focus-visible,.question-nav-button:focus-visible,.option-item:focus-within,.details-button:focus-visible,.toast__close:focus-visible,.back-link:focus-visible,.import-dropzone:focus-visible,select:focus-visible { outline: 3px solid var(--ring); outline-offset: 2px; }
 .ui-button:disabled { opacity: .55; cursor: not-allowed; }
 .ui-button:not(:disabled):active { transform: translateY(1px); }
 .ui-button.is-loading { pointer-events: none; }
@@ -782,6 +812,9 @@ h1 {
 .option-list {
   display: grid;
   gap: 0.625rem;
+  margin: 0;
+  border: 0;
+  padding: 0;
 }
 
 .option-item {
@@ -1137,6 +1170,7 @@ h1 {
   display: grid;
   gap: 0.75rem;
   grid-template-columns: minmax(0, 1.8fr) repeat(2, minmax(170px, 1fr));
+  align-items: end;
 }
 
 .catalog-toolbar__select {

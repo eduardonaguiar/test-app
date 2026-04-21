@@ -9,8 +9,11 @@ type AppShellProps = {
 export function AppShell({ children }: AppShellProps) {
   return (
     <div className="app-shell">
+      <a href="#main-content" className="skip-link">
+        Pular para o conteúdo principal
+      </a>
       <AppHeader />
-      <main className="app-shell__main">
+      <main id="main-content" className="app-shell__main" tabIndex={-1}>
         <div className="app-shell__container app-shell__content">{children ?? <Outlet />}</div>
       </main>
     </div>

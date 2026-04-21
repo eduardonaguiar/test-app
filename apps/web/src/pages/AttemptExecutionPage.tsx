@@ -301,7 +301,7 @@ export function AttemptExecutionPage() {
             <strong>{answeredQuestions}/{totalQuestions}</strong>
             <small>{pendingQuestions} pendente(s)</small>
           </article>
-          <article className={`exam-session__status-card autosave-${autosaveState}`}>
+          <article className={`exam-session__status-card autosave-${autosaveState}`} aria-live="polite">
             <span>Autosave</span>
             <strong>{getAutosaveMessage(autosaveState)}</strong>
             <small>Estado sincronizado com a API.</small>
@@ -343,7 +343,8 @@ export function AttemptExecutionPage() {
 
             <p className="exam-session__prompt">{currentQuestion.prompt}</p>
 
-            <div className="option-list" role="radiogroup" aria-label={`Alternativas da questão ${currentQuestion.questionCode}`}>
+            <fieldset className="option-list">
+              <legend className="sr-only">Alternativas da questão {currentQuestion.questionCode}</legend>
               {currentQuestion.options.map((option) => {
                 const checked = option.optionId === currentQuestion.selectedOptionId;
 
@@ -363,7 +364,7 @@ export function AttemptExecutionPage() {
                   </label>
                 );
               })}
-            </div>
+            </fieldset>
 
             <footer className="exam-session__actions">
               <Button variant="outline" onClick={() => moveQuestion(-1)} disabled={state.selectedQuestionIndex === 0}>

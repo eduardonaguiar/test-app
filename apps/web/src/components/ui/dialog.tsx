@@ -1,10 +1,14 @@
-import { createContext, useContext, useMemo, useState } from 'react';
-import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useId, useMemo, useRef, useState } from 'react';
+import type { ButtonHTMLAttributes, HTMLAttributes, KeyboardEvent, MutableRefObject, ReactNode } from 'react';
 import { cn } from '../../lib/cn';
 
 type DialogContextValue = {
   isOpen: boolean;
   setOpen: (open: boolean) => void;
+  titleId: string;
+  descriptionId: string;
+  triggerRef: MutableRefObject<HTMLButtonElement | null>;
+  contentRef: MutableRefObject<HTMLDivElement | null>;
 };
 
 const DialogContext = createContext<DialogContextValue | null>(null);
@@ -20,18 +24,80 @@ function useDialogContext() {
 
 export function DialogRoot({ children }: { children: ReactNode }) {
   const [isOpen, setOpen] = useState(false);
-  const context = useMemo(() => ({ isOpen, setOpen }), [isOpen]);
+  const titleId = useId();
+  const descriptionId = useId();
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
+  const context = useMemo(
+    () => ({ isOpen, setOpen, titleId, descriptionId, triggerRef, contentRef }),
+    [descriptionId, isOpen, titleId],
+  );
 
   return <DialogContext.Provider value={context}>{children}</DialogContext.Provider>;
 }
 
 export function DialogTrigger({ className, ...props }: ButtonHTMLAttributes<HTMLButtonElement>) {
-  const { setOpen } = useDialogContext();
-  return <button className={cn(className)} onClick={() => setOpen(true)} {...props} />;
+  const { setOpen, triggerRef } = useDialogContext();
+  return <button ref={triggerRef} className={cn(className)} onClick={() => setOpen(true)} {...props} />;
 }
 
 export function DialogContent({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  const { isOpen, setOpen } = useDialogContext();
+  const { isOpen, setOpen, titleId, descriptionId, triggerRef, contentRef } = useDialogContext();
+
+  useEffect(() => {
+    if (!isOpen || !contentRef.current) {
+      return;
+    }
+
+    const focusable = contentRef.current.querySelector<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    );
+
+    focusable?.focus();
+  }, [contentRef, isOpen]);
+
+  useEffect(() => {
+    if (isOpen) {
+      return;
+    }
+
+    triggerRef.current?.focus();
+  }, [isOpen, triggerRef]);
+
+  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      setOpen(false);
+      return;
+    }
+
+    if (event.key !== 'Tab' || !contentRef.current) {
+      return;
+    }
+
+    const focusable = Array.from(
+      contentRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ),
+    );
+
+    if (focusable.length === 0) {
+      event.preventDefault();
+      return;
+    }
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const activeElement = document.activeElement;
+
+    if (!event.shiftKey && activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    } else if (event.shiftKey && activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    }
+  }
 
   if (!isOpen) {
     return null;
@@ -40,10 +106,14 @@ export function DialogContent({ className, ...props }: HTMLAttributes<HTMLDivEle
   return (
     <div className="ui-dialog__overlay" role="presentation" onClick={() => setOpen(false)}>
       <div
+        ref={contentRef}
         className={cn('ui-dialog__content', className)}
         role="dialog"
         aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={descriptionId}
         onClick={(event) => event.stopPropagation()}
+        onKeyDown={handleKeyDown}
         {...props}
       />
     </div>
@@ -59,11 +129,13 @@ export function DialogFooter({ className, ...props }: HTMLAttributes<HTMLDivElem
 }
 
 export function DialogTitle({ className, ...props }: HTMLAttributes<HTMLHeadingElement>) {
-  return <h2 className={cn('ui-dialog__title', className)} {...props} />;
+  const { titleId } = useDialogContext();
+  return <h2 id={titleId} className={cn('ui-dialog__title', className)} {...props} />;
 }
 
 export function DialogDescription({ className, ...props }: HTMLAttributes<HTMLParagraphElement>) {
-  return <p className={cn('ui-dialog__description', className)} {...props} />;
+  const { descriptionId } = useDialogContext();
+  return <p id={descriptionId} className={cn('ui-dialog__description', className)} {...props} />;
 }
 
 export function DialogClose({ className, ...props }: ButtonHTMLAttributes<HTMLButtonElement>) {
