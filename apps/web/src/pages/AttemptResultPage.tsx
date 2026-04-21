@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import {
+  applyReviewFilters,
+  DEFAULT_REVIEW_FILTERS,
+  getReviewTopics,
+  type QuestionReviewFilterState,
+  type ReviewDifficultyFilter,
+} from './reviewFilters';
 
 type AttemptResultQuestionReviewResponse = {
   questionId: string;
@@ -7,6 +14,8 @@ type AttemptResultQuestionReviewResponse = {
   sectionTitle: string;
   questionCode: string;
   prompt: string;
+  topic: string;
+  difficulty: string;
   userSelectedOptionId?: string;
   userSelectedOptionCode?: string;
   userSelectedOptionText?: string;
@@ -44,8 +53,6 @@ type AttemptResultResponse = {
   topicAnalysis: AttemptResultTopicAnalysisResponse[];
 };
 
-type ReviewFilter = 'all' | 'incorrect' | 'correct' | 'unanswered';
-
 function normalizePercentage(value: number): string {
   const normalized = Number.isFinite(value) ? value : 0;
   return `${normalized.toFixed(1)}%`;
@@ -76,7 +83,7 @@ export function AttemptResultPage() {
   const { attemptId } = useParams();
   const [result, setResult] = useState<AttemptResultResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [filter, setFilter] = useState<ReviewFilter>('all');
+  const [filters, setFilters] = useState<QuestionReviewFilterState>(DEFAULT_REVIEW_FILTERS);
 
   useEffect(() => {
     if (!attemptId) {
@@ -122,23 +129,12 @@ export function AttemptResultPage() {
     };
   }, [attemptId]);
 
-  const filteredReviews = useMemo(() => {
-    if (!result) {
-      return [];
-    }
+  const filteredReviews = useMemo(() => (result ? applyReviewFilters(result.questionReviews, filters) : []), [filters, result]);
+  const availableTopics = useMemo(() => (result ? getReviewTopics(result.questionReviews) : []), [result]);
 
-    switch (filter) {
-      case 'incorrect':
-        return result.questionReviews.filter((review) => review.userSelectedOptionId && !review.isCorrect);
-      case 'correct':
-        return result.questionReviews.filter((review) => review.isCorrect);
-      case 'unanswered':
-        return result.questionReviews.filter((review) => !review.userSelectedOptionId);
-      case 'all':
-      default:
-        return result.questionReviews;
-    }
-  }, [filter, result]);
+  function updateFilter<K extends keyof QuestionReviewFilterState>(key: K, value: QuestionReviewFilterState[K]) {
+    setFilters((current) => ({ ...current, [key]: value }));
+  }
 
   return (
     <main className="page">
@@ -220,34 +216,40 @@ export function AttemptResultPage() {
           <section className="exam-card" aria-label="Revisão detalhada por questão">
             <div className="review-header">
               <h2>Revisão detalhada por questão</h2>
-              <div className="filter-group" role="group" aria-label="Filtro de revisão">
-                <button
-                  type="button"
-                  className={`filter-button ${filter === 'all' ? 'active' : ''}`}
-                  onClick={() => setFilter('all')}
-                >
-                  Todas
-                </button>
-                <button
-                  type="button"
-                  className={`filter-button ${filter === 'incorrect' ? 'active' : ''}`}
-                  onClick={() => setFilter('incorrect')}
-                >
-                  Só erradas
-                </button>
-                <button
-                  type="button"
-                  className={`filter-button ${filter === 'correct' ? 'active' : ''}`}
-                  onClick={() => setFilter('correct')}
-                >
-                  Só corretas
-                </button>
-                <button
-                  type="button"
-                  className={`filter-button ${filter === 'unanswered' ? 'active' : ''}`}
-                  onClick={() => setFilter('unanswered')}
-                >
-                  Sem resposta
+              <div className="review-filters" role="group" aria-label="Filtros de revisão">
+                <label className="filter-field">
+                  <span>Status</span>
+                  <select value={filters.status} onChange={(event) => updateFilter('status', event.target.value as QuestionReviewFilterState['status'])}>
+                    <option value="all">Todas</option>
+                    <option value="correct">Corretas</option>
+                    <option value="incorrect">Incorretas</option>
+                  </select>
+                </label>
+                <label className="filter-field">
+                  <span>Tópico</span>
+                  <select value={filters.topic} onChange={(event) => updateFilter('topic', event.target.value)}>
+                    <option value="all">Todos</option>
+                    {availableTopics.map((topic) => (
+                      <option key={topic} value={topic}>
+                        {topic}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="filter-field">
+                  <span>Dificuldade</span>
+                  <select
+                    value={filters.difficulty}
+                    onChange={(event) => updateFilter('difficulty', event.target.value as ReviewDifficultyFilter)}
+                  >
+                    <option value="all">Todas</option>
+                    <option value="easy">Easy</option>
+                    <option value="medium">Medium</option>
+                    <option value="hard">Hard</option>
+                  </select>
+                </label>
+                <button type="button" className="filter-clear-button" onClick={() => setFilters(DEFAULT_REVIEW_FILTERS)}>
+                  Limpar filtros
                 </button>
               </div>
             </div>
@@ -257,7 +259,8 @@ export function AttemptResultPage() {
             </p>
 
             <div className="review-list">
-              {filteredReviews.map((review) => {
+              {filteredReviews.length > 0 ? (
+                filteredReviews.map((review) => {
                 const status = getReviewStatus(review);
                 const statusClass = status === 'Correta' ? 'correct' : status === 'Errada' ? 'incorrect' : 'unanswered';
 
@@ -271,6 +274,9 @@ export function AttemptResultPage() {
                     </header>
 
                     <p>{review.prompt}</p>
+                    <p className="review-meta">
+                      <strong>Tópico:</strong> {review.topic} · <strong>Dificuldade:</strong> {review.difficulty}
+                    </p>
 
                     <dl className="review-details">
                       <div>
@@ -297,7 +303,15 @@ export function AttemptResultPage() {
                     </p>
                   </article>
                 );
-              })}
+                })
+              ) : (
+                <article className="review-empty-state">
+                  <p>Nenhuma questão encontrada com os filtros selecionados.</p>
+                  <button type="button" className="filter-clear-button" onClick={() => setFilters(DEFAULT_REVIEW_FILTERS)}>
+                    Limpar filtros
+                  </button>
+                </article>
+              )}
             </div>
           </section>
         </>

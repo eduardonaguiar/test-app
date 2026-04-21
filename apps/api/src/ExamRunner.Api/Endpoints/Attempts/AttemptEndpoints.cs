@@ -416,6 +416,8 @@ public static class AttemptEndpoints
                     review.SectionTitle,
                     review.QuestionCode,
                     review.Prompt,
+                    review.Topic,
+                    review.Difficulty,
                     review.UserSelectedOptionId,
                     review.UserSelectedOptionCode,
                     review.UserSelectedOptionText,

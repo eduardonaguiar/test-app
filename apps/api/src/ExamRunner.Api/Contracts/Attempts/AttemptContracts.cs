@@ -78,6 +78,8 @@ public sealed record AttemptResultQuestionReviewResponse(
     string SectionTitle,
     string QuestionCode,
     string Prompt,
+    string Topic,
+    string Difficulty,
     Guid? UserSelectedOptionId,
     string? UserSelectedOptionCode,
     string? UserSelectedOptionText,
