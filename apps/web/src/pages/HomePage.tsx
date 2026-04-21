@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { CardSkeleton } from '../components/feedback/CardSkeleton';
+import { EmptyState } from '../components/feedback/EmptyState';
+import { InlineError } from '../components/feedback/InlineError';
 import { PageHeader } from '../components/layout/PageHeader';
 import { PageSection } from '../components/layout/PageSection';
-import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
 import type { ListExamsResponse } from '../generated/api-contract';
@@ -15,11 +17,13 @@ type ExamsState = {
 export function HomePage() {
   const [state, setState] = useState<ExamsState | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
 
     async function loadExams() {
+      setErrorMessage(null);
       const examsResult = await listExams(controller.signal);
       setState({ exams: examsResult.items });
     }
@@ -35,7 +39,7 @@ export function HomePage() {
     return () => {
       controller.abort();
     };
-  }, []);
+  }, [refreshToken]);
 
   return (
     <div className="stack-md">
@@ -61,17 +65,26 @@ export function HomePage() {
       </PageSection>
 
       {errorMessage ? (
-        <Alert variant="destructive">
-          <AlertTitle>Falha ao carregar provas</AlertTitle>
-          <AlertDescription>{errorMessage}</AlertDescription>
-        </Alert>
+        <InlineError
+          title="Falha ao carregar provas"
+          description={errorMessage}
+          onRetry={() => {
+            setState(null);
+            setRefreshToken((current) => current + 1);
+          }}
+        />
       ) : state ? (
         <PageSection ariaLabel="Lista de provas">
           {state.exams.length === 0 ? (
-            <Alert>
-              <AlertTitle>Nenhuma prova encontrada</AlertTitle>
-              <AlertDescription>Importe a primeira prova para começar a estudar.</AlertDescription>
-            </Alert>
+            <EmptyState
+              title="Nenhum simulado encontrado"
+              description="Importe a primeira prova para começar a estudar."
+              action={
+                <Link className="ui-button ui-button--default ui-button--default-size" to="/exams/import">
+                  Importar primeira prova
+                </Link>
+              }
+            />
           ) : (
             <div className="stack-md">
               {state.exams.map((exam) => (
@@ -113,10 +126,7 @@ export function HomePage() {
           )}
         </PageSection>
       ) : (
-        <Alert>
-          <AlertTitle>Carregando provas</AlertTitle>
-          <AlertDescription>Buscando catálogo de provas importadas...</AlertDescription>
-        </Alert>
+        <CardSkeleton count={3} />
       )}
     </div>
   );

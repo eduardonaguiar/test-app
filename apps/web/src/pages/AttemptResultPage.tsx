@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { EmptyState } from '../components/feedback/EmptyState';
+import { InlineError } from '../components/feedback/InlineError';
+import { PageLoading } from '../components/feedback/PageLoading';
+import { SuccessAlert } from '../components/feedback/SuccessAlert';
 import { exportAttemptReviewHtml } from '../services/attemptReviewExport';
 import {
   applyReviewFilters,
@@ -209,7 +213,7 @@ export function AttemptResultPage() {
       </div>
 
       {errorMessage ? (
-        <p>{errorMessage}</p>
+        <InlineError title="Falha ao carregar revisão" description={errorMessage} />
       ) : result ? (
         <>
           <header className="exam-details-header">
@@ -222,7 +226,13 @@ export function AttemptResultPage() {
                 {isExporting ? 'Exportando revisão...' : 'Exportar revisão (HTML)'}
               </button>
             </div>
-            {exportFeedback ? <p className="start-hint">{exportFeedback}</p> : null}
+            {exportFeedback ? (
+              exportFeedback.startsWith('Exportação concluída') ? (
+                <SuccessAlert title="Revisão exportada com sucesso" description={exportFeedback} className="attempt-result-feedback" />
+              ) : (
+                <InlineError title="Falha ao exportar revisão" description={exportFeedback} className="attempt-result-feedback" />
+              )
+            ) : null}
           </header>
 
           <section className="exam-card" aria-label="Resumo da nota">
@@ -374,18 +384,22 @@ export function AttemptResultPage() {
                   );
                 })
               ) : (
-                <article className="review-empty-state">
-                  <p>Nenhuma questão encontrada com os filtros selecionados.</p>
-                  <button type="button" className="filter-clear-button" onClick={() => setFilters(DEFAULT_REVIEW_FILTERS)}>
-                    Limpar filtros
-                  </button>
-                </article>
+                <EmptyState
+                  title="Nenhuma questão encontrada"
+                  description="Ajuste os filtros para visualizar outras questões da revisão."
+                  className="review-empty-state"
+                  action={
+                    <button type="button" className="filter-clear-button" onClick={() => setFilters(DEFAULT_REVIEW_FILTERS)}>
+                      Limpar filtros
+                    </button>
+                  }
+                />
               )}
             </div>
           </section>
         </>
       ) : (
-        <p>Carregando resultado da tentativa…</p>
+        <PageLoading message="Carregando revisão" description="Montando resultado detalhado da tentativa..." />
       )}
     </div>
   );
