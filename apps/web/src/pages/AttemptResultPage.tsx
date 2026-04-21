@@ -66,6 +66,14 @@ type ExamTitleResponse = {
   title: string;
 };
 
+type ReviewStatus = 'Correta' | 'Errada' | 'Sem resposta';
+
+type ReviewScopeSummaryProps = {
+  filteredCount: number;
+  totalCount: number;
+  filters: QuestionReviewFilterState;
+};
+
 function normalizePercentage(value: number): string {
   const normalized = Number.isFinite(value) ? value : 0;
   return `${normalized.toFixed(1)}%`;
@@ -84,12 +92,255 @@ function formatDateTime(value: string): string {
   }).format(parsed);
 }
 
-function getReviewStatus(review: AttemptResultQuestionReviewResponse): 'Correta' | 'Errada' | 'Sem resposta' {
+function getReviewStatus(review: AttemptResultQuestionReviewResponse): ReviewStatus {
   if (!review.userSelectedOptionId) {
     return 'Sem resposta';
   }
 
   return review.isCorrect ? 'Correta' : 'Errada';
+}
+
+function getStatusClassName(status: ReviewStatus): string {
+  if (status === 'Correta') {
+    return 'correct';
+  }
+
+  if (status === 'Errada') {
+    return 'incorrect';
+  }
+
+  return 'unanswered';
+}
+
+function getFilterStatusLabel(status: QuestionReviewFilterState['status']): string {
+  if (status === 'correct') {
+    return 'corretas';
+  }
+
+  if (status === 'incorrect') {
+    return 'incorretas';
+  }
+
+  return 'todas';
+}
+
+function hasActiveFilters(filters: QuestionReviewFilterState): boolean {
+  return filters.status !== 'all' || filters.topic !== 'all' || filters.difficulty !== 'all';
+}
+
+function ReviewScopeSummary({ filteredCount, totalCount, filters }: ReviewScopeSummaryProps) {
+  const statusLabel = getFilterStatusLabel(filters.status);
+  const topicLabel = filters.topic === 'all' ? null : filters.topic;
+  const difficultyLabel = filters.difficulty === 'all' ? null : filters.difficulty;
+
+  return (
+    <p className="subtitle review-scope-text">
+      Mostrando {filteredCount} de {totalCount} questões ({statusLabel})
+      {topicLabel ? ` · tópico ${topicLabel}` : ''}
+      {difficultyLabel ? ` · dificuldade ${difficultyLabel}` : ''}.
+    </p>
+  );
+}
+
+type ReviewHeaderProps = {
+  result: AttemptResultResponse;
+  examTitle: string;
+  startedAt: string | null;
+  isExporting: boolean;
+  exportFeedback: string | null;
+  onExport: () => void;
+};
+
+function ReviewPageHeader({ result, examTitle, startedAt, isExporting, exportFeedback, onExport }: ReviewHeaderProps) {
+  return (
+    <header className="attempt-review-header">
+      <div className="attempt-review-header__top">
+        <div className="stack-xs">
+          <h1>Revisão da prova</h1>
+          <p className="subtitle">
+            {examTitle ? `${examTitle} · ` : ''}
+            Tentativa {result.attemptId}
+          </p>
+          <p className="subtitle">Realizada em {formatDateTime(result.submittedAt)}</p>
+        </div>
+        <button type="button" className="details-button secondary as-button" onClick={onExport} disabled={isExporting}>
+          {isExporting ? 'Exportando revisão...' : 'Exportar revisão (HTML)'}
+        </button>
+      </div>
+
+      {exportFeedback ? (
+        exportFeedback.startsWith('Exportação concluída') ? (
+          <SuccessAlert title="Revisão exportada com sucesso" description={exportFeedback} className="attempt-result-feedback" />
+        ) : (
+          <InlineError title="Falha ao exportar revisão" description={exportFeedback} className="attempt-result-feedback" />
+        )
+      ) : null}
+
+      <section className="exam-card review-summary-card" aria-label="Resumo geral da revisão">
+        <div className="review-summary-card__score-row">
+          <div>
+            <p className="review-summary-card__label">Resultado final</p>
+            <p className="review-summary-card__percentage">{normalizePercentage(result.percentage)}</p>
+          </div>
+          <span className={`result-status-badge ${result.passed ? 'passed' : 'failed'}`}>
+            {result.passed ? 'Aprovado' : 'Reprovado'}
+          </span>
+        </div>
+
+        <dl className="exam-metadata result-metadata">
+          <div>
+            <dt>Score</dt>
+            <dd>{result.score}</dd>
+          </div>
+          <div>
+            <dt>Total de questões</dt>
+            <dd>{result.totalQuestions}</dd>
+          </div>
+          <div>
+            <dt>Acertos</dt>
+            <dd>{result.correctAnswers}</dd>
+          </div>
+          <div>
+            <dt>Erros</dt>
+            <dd>{result.incorrectAnswers}</dd>
+          </div>
+          <div>
+            <dt>Em branco</dt>
+            <dd>{result.unansweredQuestions}</dd>
+          </div>
+          <div>
+            <dt>Início</dt>
+            <dd>{startedAt ? formatDateTime(startedAt) : 'Não informado'}</dd>
+          </div>
+          <div>
+            <dt>Submissão</dt>
+            <dd>{formatDateTime(result.submittedAt)}</dd>
+          </div>
+          <div>
+            <dt>Avaliação</dt>
+            <dd>{formatDateTime(result.evaluatedAt)}</dd>
+          </div>
+          <div>
+            <dt>Status técnico</dt>
+            <dd>{result.outcome}</dd>
+          </div>
+        </dl>
+      </section>
+    </header>
+  );
+}
+
+type FilterToolbarProps = {
+  filters: QuestionReviewFilterState;
+  availableTopics: string[];
+  filteredCount: number;
+  totalCount: number;
+  onUpdateFilter: <K extends keyof QuestionReviewFilterState>(key: K, value: QuestionReviewFilterState[K]) => void;
+  onReset: () => void;
+};
+
+function ReviewFilterToolbar({ filters, availableTopics, filteredCount, totalCount, onUpdateFilter, onReset }: FilterToolbarProps) {
+  return (
+    <div className="review-toolbar" role="group" aria-label="Filtros de revisão">
+      <div className="review-filters">
+        <label className="filter-field">
+          <span>Status</span>
+          <select value={filters.status} onChange={(event) => onUpdateFilter('status', event.target.value as QuestionReviewFilterState['status'])}>
+            <option value="all">Todas</option>
+            <option value="correct">Corretas</option>
+            <option value="incorrect">Incorretas</option>
+          </select>
+        </label>
+        <label className="filter-field">
+          <span>Tópico</span>
+          <select value={filters.topic} onChange={(event) => onUpdateFilter('topic', event.target.value)}>
+            <option value="all">Todos</option>
+            {availableTopics.map((topic) => (
+              <option key={topic} value={topic}>
+                {topic}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="filter-field">
+          <span>Dificuldade</span>
+          <select value={filters.difficulty} onChange={(event) => onUpdateFilter('difficulty', event.target.value as ReviewDifficultyFilter)}>
+            <option value="all">Todas</option>
+            <option value="easy">Easy</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </label>
+      </div>
+
+      <div className="review-toolbar__meta">
+        <ReviewScopeSummary filteredCount={filteredCount} totalCount={totalCount} filters={filters} />
+        <button type="button" className="filter-clear-button" onClick={onReset} disabled={!hasActiveFilters(filters)}>
+          Limpar filtros
+        </button>
+      </div>
+    </div>
+  );
+}
+
+type QuestionReviewCardProps = {
+  review: AttemptResultQuestionReviewResponse;
+};
+
+function QuestionReviewCard({ review }: QuestionReviewCardProps) {
+  const status = getReviewStatus(review);
+  const statusClass = getStatusClassName(status);
+
+  return (
+    <article className={`review-item review-item--${statusClass}`}>
+      <header className="review-item-header">
+        <div className="stack-xs">
+          <h3>{review.questionCode}</h3>
+          <p className="review-meta">
+            <strong>Seção:</strong> {review.sectionTitle}
+          </p>
+        </div>
+        <div className="review-item-badges">
+          <span className={`review-status ${statusClass}`}>{status}</span>
+          <span className="review-tag">Tópico: {review.topic}</span>
+          <span className="review-tag">Dificuldade: {review.difficulty}</span>
+        </div>
+      </header>
+
+      <section className="review-block">
+        <h4>Enunciado</h4>
+        <p>{review.prompt}</p>
+      </section>
+
+      <section className="review-answer-grid" aria-label="Comparativo de respostas">
+        <article className="review-answer-card review-answer-card--user">
+          <h4>Sua resposta</h4>
+          <p>
+            {review.userSelectedOptionCode && review.userSelectedOptionText
+              ? `${review.userSelectedOptionCode}) ${review.userSelectedOptionText}`
+              : 'Não respondida'}
+          </p>
+        </article>
+
+        <article className="review-answer-card review-answer-card--correct">
+          <h4>Resposta correta</h4>
+          <p>
+            {review.correctOptionCode}) {review.correctOptionText}
+          </p>
+        </article>
+      </section>
+
+      <section className="review-block review-block--summary">
+        <h4>Explicação resumida</h4>
+        <p>{review.explanationSummary}</p>
+      </section>
+
+      <section className="review-block review-block--details">
+        <h4>Explicação detalhada</h4>
+        <p>{review.explanationDetails}</p>
+      </section>
+    </article>
+  );
 }
 
 export function AttemptResultPage() {
@@ -216,65 +467,14 @@ export function AttemptResultPage() {
         <InlineError title="Falha ao carregar revisão" description={errorMessage} />
       ) : result ? (
         <>
-          <header className="exam-details-header">
-            <div className="review-title-row">
-              <div>
-                <h1>Resultado final da tentativa</h1>
-                <p className="subtitle">Tentativa {result.attemptId}</p>
-              </div>
-              <button type="button" className="details-button secondary as-button" onClick={handleExportHtml} disabled={isExporting}>
-                {isExporting ? 'Exportando revisão...' : 'Exportar revisão (HTML)'}
-              </button>
-            </div>
-            {exportFeedback ? (
-              exportFeedback.startsWith('Exportação concluída') ? (
-                <SuccessAlert title="Revisão exportada com sucesso" description={exportFeedback} className="attempt-result-feedback" />
-              ) : (
-                <InlineError title="Falha ao exportar revisão" description={exportFeedback} className="attempt-result-feedback" />
-              )
-            ) : null}
-          </header>
-
-          <section className="exam-card" aria-label="Resumo da nota">
-            <dl className="exam-metadata result-metadata">
-              <div>
-                <dt>Nota</dt>
-                <dd>{result.score}</dd>
-              </div>
-              <div>
-                <dt>Percentual</dt>
-                <dd>{normalizePercentage(result.percentage)}</dd>
-              </div>
-              <div>
-                <dt>Status</dt>
-                <dd>
-                  <span className={`result-status-badge ${result.passed ? 'passed' : 'failed'}`}>
-                    {result.passed ? 'Aprovado' : 'Reprovado'}
-                  </span>
-                </dd>
-              </div>
-              <div>
-                <dt>Resultado</dt>
-                <dd>{result.outcome}</dd>
-              </div>
-              <div>
-                <dt>Acertos</dt>
-                <dd>{result.correctAnswers}</dd>
-              </div>
-              <div>
-                <dt>Erros</dt>
-                <dd>{result.incorrectAnswers}</dd>
-              </div>
-              <div>
-                <dt>Em branco</dt>
-                <dd>{result.unansweredQuestions}</dd>
-              </div>
-              <div>
-                <dt>Submetida em</dt>
-                <dd>{formatDateTime(result.submittedAt)}</dd>
-              </div>
-            </dl>
-          </section>
+          <ReviewPageHeader
+            result={result}
+            examTitle={examTitle}
+            startedAt={startedAt}
+            isExporting={isExporting}
+            exportFeedback={exportFeedback}
+            onExport={handleExportHtml}
+          />
 
           {result.topicAnalysis.length > 0 ? (
             <section className="exam-card" aria-label="Desempenho por tópico">
@@ -294,95 +494,24 @@ export function AttemptResultPage() {
 
           <section className="exam-card" aria-label="Revisão detalhada por questão">
             <div className="review-header">
-              <h2>Revisão detalhada por questão</h2>
-              <div className="review-filters" role="group" aria-label="Filtros de revisão">
-                <label className="filter-field">
-                  <span>Status</span>
-                  <select value={filters.status} onChange={(event) => updateFilter('status', event.target.value as QuestionReviewFilterState['status'])}>
-                    <option value="all">Todas</option>
-                    <option value="correct">Corretas</option>
-                    <option value="incorrect">Incorretas</option>
-                  </select>
-                </label>
-                <label className="filter-field">
-                  <span>Tópico</span>
-                  <select value={filters.topic} onChange={(event) => updateFilter('topic', event.target.value)}>
-                    <option value="all">Todos</option>
-                    {availableTopics.map((topic) => (
-                      <option key={topic} value={topic}>
-                        {topic}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="filter-field">
-                  <span>Dificuldade</span>
-                  <select
-                    value={filters.difficulty}
-                    onChange={(event) => updateFilter('difficulty', event.target.value as ReviewDifficultyFilter)}
-                  >
-                    <option value="all">Todas</option>
-                    <option value="easy">Easy</option>
-                    <option value="medium">Medium</option>
-                    <option value="hard">Hard</option>
-                  </select>
-                </label>
-                <button type="button" className="filter-clear-button" onClick={() => setFilters(DEFAULT_REVIEW_FILTERS)}>
-                  Limpar filtros
-                </button>
+              <div>
+                <h2>Revisão orientada por questão</h2>
+                <p className="subtitle">Use os filtros para focar nos temas com maior oportunidade de melhoria.</p>
               </div>
             </div>
 
-            <p className="subtitle">
-              Exibindo {filteredReviews.length} de {result.questionReviews.length} questões.
-            </p>
+            <ReviewFilterToolbar
+              filters={filters}
+              availableTopics={availableTopics}
+              filteredCount={filteredReviews.length}
+              totalCount={result.questionReviews.length}
+              onUpdateFilter={updateFilter}
+              onReset={() => setFilters(DEFAULT_REVIEW_FILTERS)}
+            />
 
             <div className="review-list">
               {filteredReviews.length > 0 ? (
-                filteredReviews.map((review) => {
-                  const status = getReviewStatus(review);
-                  const statusClass = status === 'Correta' ? 'correct' : status === 'Errada' ? 'incorrect' : 'unanswered';
-
-                  return (
-                    <article key={review.questionId} className="review-item">
-                      <header className="review-item-header">
-                        <h3>
-                          {review.questionCode} · {review.sectionTitle}
-                        </h3>
-                        <span className={`review-status ${statusClass}`}>{status}</span>
-                      </header>
-
-                      <p>{review.prompt}</p>
-                      <p className="review-meta">
-                        <strong>Tópico:</strong> {review.topic} · <strong>Dificuldade:</strong> {review.difficulty}
-                      </p>
-
-                      <dl className="review-details">
-                        <div>
-                          <dt>Sua resposta</dt>
-                          <dd>
-                            {review.userSelectedOptionCode && review.userSelectedOptionText
-                              ? `${review.userSelectedOptionCode}) ${review.userSelectedOptionText}`
-                              : 'Não respondida'}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt>Resposta correta</dt>
-                          <dd>
-                            {review.correctOptionCode}) {review.correctOptionText}
-                          </dd>
-                        </div>
-                      </dl>
-
-                      <p>
-                        <strong>Resumo:</strong> {review.explanationSummary}
-                      </p>
-                      <p>
-                        <strong>Comentário detalhado:</strong> {review.explanationDetails}
-                      </p>
-                    </article>
-                  );
-                })
+                filteredReviews.map((review) => <QuestionReviewCard key={review.questionId} review={review} />)
               ) : (
                 <EmptyState
                   title="Nenhuma questão encontrada"
