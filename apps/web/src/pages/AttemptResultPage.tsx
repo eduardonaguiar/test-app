@@ -1,16 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { ReviewFilterToolbar } from '../components/review/ReviewFilterToolbar';
 import { EmptyState } from '../components/feedback/EmptyState';
 import { InlineError } from '../components/feedback/InlineError';
 import { PageLoading } from '../components/feedback/PageLoading';
 import { SuccessAlert } from '../components/feedback/SuccessAlert';
+import { Button } from '../components/ui/button';
 import { exportAttemptReviewHtml } from '../services/attemptReviewExport';
 import {
   applyReviewFilters,
   DEFAULT_REVIEW_FILTERS,
   getReviewTopics,
   type QuestionReviewFilterState,
-  type ReviewDifficultyFilter,
 } from './reviewFilters';
 
 type AttemptResultQuestionReviewResponse = {
@@ -68,12 +69,6 @@ type ExamTitleResponse = {
 
 type ReviewStatus = 'Correta' | 'Errada' | 'Sem resposta';
 
-type ReviewScopeSummaryProps = {
-  filteredCount: number;
-  totalCount: number;
-  filters: QuestionReviewFilterState;
-};
-
 function normalizePercentage(value: number): string {
   const normalized = Number.isFinite(value) ? value : 0;
   return `${normalized.toFixed(1)}%`;
@@ -110,36 +105,6 @@ function getStatusClassName(status: ReviewStatus): string {
   }
 
   return 'unanswered';
-}
-
-function getFilterStatusLabel(status: QuestionReviewFilterState['status']): string {
-  if (status === 'correct') {
-    return 'corretas';
-  }
-
-  if (status === 'incorrect') {
-    return 'incorretas';
-  }
-
-  return 'todas';
-}
-
-function hasActiveFilters(filters: QuestionReviewFilterState): boolean {
-  return filters.status !== 'all' || filters.topic !== 'all' || filters.difficulty !== 'all';
-}
-
-function ReviewScopeSummary({ filteredCount, totalCount, filters }: ReviewScopeSummaryProps) {
-  const statusLabel = getFilterStatusLabel(filters.status);
-  const topicLabel = filters.topic === 'all' ? null : filters.topic;
-  const difficultyLabel = filters.difficulty === 'all' ? null : filters.difficulty;
-
-  return (
-    <p className="subtitle review-scope-text">
-      Mostrando {filteredCount} de {totalCount} questões ({statusLabel})
-      {topicLabel ? ` · tópico ${topicLabel}` : ''}
-      {difficultyLabel ? ` · dificuldade ${difficultyLabel}` : ''}.
-    </p>
-  );
 }
 
 type ReviewHeaderProps = {
@@ -227,59 +192,6 @@ function ReviewPageHeader({ result, examTitle, startedAt, isExporting, exportFee
         </dl>
       </section>
     </header>
-  );
-}
-
-type FilterToolbarProps = {
-  filters: QuestionReviewFilterState;
-  availableTopics: string[];
-  filteredCount: number;
-  totalCount: number;
-  onUpdateFilter: <K extends keyof QuestionReviewFilterState>(key: K, value: QuestionReviewFilterState[K]) => void;
-  onReset: () => void;
-};
-
-function ReviewFilterToolbar({ filters, availableTopics, filteredCount, totalCount, onUpdateFilter, onReset }: FilterToolbarProps) {
-  return (
-    <div className="review-toolbar" role="group" aria-label="Filtros de revisão">
-      <div className="review-filters">
-        <label className="filter-field">
-          <span>Status</span>
-          <select value={filters.status} onChange={(event) => onUpdateFilter('status', event.target.value as QuestionReviewFilterState['status'])}>
-            <option value="all">Todas</option>
-            <option value="correct">Corretas</option>
-            <option value="incorrect">Incorretas</option>
-          </select>
-        </label>
-        <label className="filter-field">
-          <span>Tópico</span>
-          <select value={filters.topic} onChange={(event) => onUpdateFilter('topic', event.target.value)}>
-            <option value="all">Todos</option>
-            {availableTopics.map((topic) => (
-              <option key={topic} value={topic}>
-                {topic}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="filter-field">
-          <span>Dificuldade</span>
-          <select value={filters.difficulty} onChange={(event) => onUpdateFilter('difficulty', event.target.value as ReviewDifficultyFilter)}>
-            <option value="all">Todas</option>
-            <option value="easy">Easy</option>
-            <option value="medium">Medium</option>
-            <option value="hard">Hard</option>
-          </select>
-        </label>
-      </div>
-
-      <div className="review-toolbar__meta">
-        <ReviewScopeSummary filteredCount={filteredCount} totalCount={totalCount} filters={filters} />
-        <button type="button" className="filter-clear-button" onClick={onReset} disabled={!hasActiveFilters(filters)}>
-          Limpar filtros
-        </button>
-      </div>
-    </div>
   );
 }
 
@@ -515,12 +427,12 @@ export function AttemptResultPage() {
               ) : (
                 <EmptyState
                   title="Nenhuma questão encontrada"
-                  description="Ajuste os filtros para visualizar outras questões da revisão."
+                  description="Tente ajustar os filtros aplicados ou volte para a revisão completa."
                   className="review-empty-state"
                   action={
-                    <button type="button" className="filter-clear-button" onClick={() => setFilters(DEFAULT_REVIEW_FILTERS)}>
+                    <Button variant="outline" onClick={() => setFilters(DEFAULT_REVIEW_FILTERS)}>
                       Limpar filtros
-                    </button>
+                    </Button>
                   }
                 />
               )}
