@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { PageHeader } from '../components/layout/PageHeader';
+import { PageSection } from '../components/layout/PageSection';
+import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 
 type PerformanceDashboardResponse = {
   summary: {
@@ -82,47 +86,52 @@ export function PerformanceDashboardPage() {
   const hasData = useMemo(() => (dashboard ? dashboard.summary.totalAttempts > 0 : false), [dashboard]);
 
   return (
-    <main className="page">
-      <div className="inline-links">
-        <Link to="/" className="back-link">
-          ← Voltar para provas
-        </Link>
-        <Link to="/history" className="back-link">
-          Ver histórico
-        </Link>
-      </div>
-
-      <header className="exam-details-header">
-        <h1>Dashboard de desempenho</h1>
-        <p className="subtitle">Acompanhe sua evolução de estudo e identifique os assuntos que merecem revisão.</p>
-      </header>
+    <div className="stack-md">
+      <PageHeader
+        title="Dashboard"
+        description="Acompanhe sua evolução por tentativa e os temas com maior incidência de erro."
+        actions={
+          <div className="inline-links">
+            <Link to="/history" className="ui-button ui-button--outline ui-button--default-size">
+              Ver histórico
+            </Link>
+            <Link to="/" className="ui-button ui-button--outline ui-button--default-size">
+              Ver simulados
+            </Link>
+          </div>
+        }
+      />
 
       {errorMessage ? (
-        <p>{errorMessage}</p>
+        <Alert variant="destructive">
+          <AlertTitle>Falha ao carregar dashboard</AlertTitle>
+          <AlertDescription>{errorMessage}</AlertDescription>
+        </Alert>
       ) : dashboard ? (
         hasData ? (
           <>
-            <section className="kpi-grid" aria-label="Resumo geral de desempenho">
-              <article className="exam-card">
-                <h2>Tentativas realizadas</h2>
-                <p className="kpi-value">{dashboard.summary.totalAttempts}</p>
-              </article>
-              <article className="exam-card">
-                <h2>Taxa geral de acerto</h2>
-                <p className="kpi-value">{formatPercentage(dashboard.summary.globalAccuracyRate)}</p>
-              </article>
-              <article className="exam-card">
-                <h2>Média percentual</h2>
-                <p className="kpi-value">{formatPercentage(dashboard.summary.averageAttemptPercentage)}</p>
-              </article>
-              <article className="exam-card">
-                <h2>Último resultado</h2>
-                <p className="kpi-value">{formatPercentage(dashboard.summary.lastAttemptPercentage)}</p>
-              </article>
-            </section>
+            <PageSection title="Resumo geral" ariaLabel="Resumo geral de desempenho">
+              <div className="kpi-grid">
+                <Card>
+                  <CardHeader><CardTitle>Tentativas realizadas</CardTitle></CardHeader>
+                  <CardContent><p className="kpi-value">{dashboard.summary.totalAttempts}</p></CardContent>
+                </Card>
+                <Card>
+                  <CardHeader><CardTitle>Taxa geral de acerto</CardTitle></CardHeader>
+                  <CardContent><p className="kpi-value">{formatPercentage(dashboard.summary.globalAccuracyRate)}</p></CardContent>
+                </Card>
+                <Card>
+                  <CardHeader><CardTitle>Média percentual</CardTitle></CardHeader>
+                  <CardContent><p className="kpi-value">{formatPercentage(dashboard.summary.averageAttemptPercentage)}</p></CardContent>
+                </Card>
+                <Card>
+                  <CardHeader><CardTitle>Último resultado</CardTitle></CardHeader>
+                  <CardContent><p className="kpi-value">{formatPercentage(dashboard.summary.lastAttemptPercentage)}</p></CardContent>
+                </Card>
+              </div>
+            </PageSection>
 
-            <section className="exam-card" aria-label="Evolução por tentativa">
-              <h2>Evolução por tentativa</h2>
+            <PageSection title="Evolução por tentativa">
               <ul className="trend-list">
                 {dashboard.attemptTrend.map((attempt) => (
                   <li key={attempt.attemptId} className="trend-item">
@@ -132,11 +141,9 @@ export function PerformanceDashboardPage() {
                   </li>
                 ))}
               </ul>
-            </section>
+            </PageSection>
 
-            <section className="exam-card" aria-label="Temas com maior erro">
-              <h2>Temas com maior erro</h2>
-              <p className="subtitle">Ordenado do menor para o maior índice de acerto.</p>
+            <PageSection title="Temas com maior erro" description="Ordenado do menor para o maior índice de acerto.">
               <div className="topic-table-wrapper">
                 <table className="topic-table">
                   <thead>
@@ -161,17 +168,20 @@ export function PerformanceDashboardPage() {
                   </tbody>
                 </table>
               </div>
-            </section>
+            </PageSection>
           </>
         ) : (
-          <section className="exam-card" aria-label="Dashboard vazio">
-            <p>Você ainda não possui tentativas suficientes para gerar insights.</p>
-            <p>Realize uma prova para começar a acompanhar seu desempenho.</p>
-          </section>
+          <Alert>
+            <AlertTitle>Dashboard ainda vazio</AlertTitle>
+            <AlertDescription>Realize uma prova para começar a acompanhar seu desempenho.</AlertDescription>
+          </Alert>
         )
       ) : (
-        <p>Carregando dashboard…</p>
+        <Alert>
+          <AlertTitle>Carregando dashboard</AlertTitle>
+          <AlertDescription>Buscando dados de desempenho...</AlertDescription>
+        </Alert>
       )}
-    </main>
+    </div>
   );
 }

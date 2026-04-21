@@ -1,4 +1,5 @@
 import { Route, Routes } from 'react-router-dom';
+import { AppShell } from './components/layout/AppShell';
 import { AttemptExecutionPage } from './pages/AttemptExecutionPage';
 import { ExamDetailsPage } from './pages/ExamDetailsPage';
 import { HomePage } from './pages/HomePage';
@@ -9,24 +10,26 @@ import { PerformanceDashboardPage } from './pages/PerformanceDashboardPage';
 
 function PlaceholderPage() {
   return (
-    <main className="page">
+    <section className="page-section">
       <h1>Exam Runner</h1>
       <p>This route is reserved for upcoming features.</p>
-    </main>
+    </section>
   );
 }
 
 export function App() {
   return (
     <Routes>
-      <Route path="/" element={<HomePage />} />
-      <Route path="/exams/import" element={<ImportExamPage />} />
-      <Route path="/exams/:examId" element={<ExamDetailsPage />} />
-      <Route path="/attempts/:attemptId" element={<AttemptExecutionPage />} />
-      <Route path="/attempts/:attemptId/result" element={<AttemptResultPage />} />
-      <Route path="/history" element={<HistoryPage />} />
-      <Route path="/dashboard" element={<PerformanceDashboardPage />} />
-      <Route path="*" element={<PlaceholderPage />} />
+      <Route element={<AppShell />}>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/exams/import" element={<ImportExamPage />} />
+        <Route path="/exams/:examId" element={<ExamDetailsPage />} />
+        <Route path="/attempts/:attemptId" element={<AttemptExecutionPage />} />
+        <Route path="/attempts/:attemptId/result" element={<AttemptResultPage />} />
+        <Route path="/history" element={<HistoryPage />} />
+        <Route path="/dashboard" element={<PerformanceDashboardPage />} />
+        <Route path="*" element={<PlaceholderPage />} />
+      </Route>
     </Routes>
   );
 }
