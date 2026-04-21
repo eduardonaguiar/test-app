@@ -480,6 +480,35 @@ h1 {
   padding-left: 1.25rem;
 }
 
+.exam-details-overview {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.exam-details-overview p {
+  margin: 0;
+  color: var(--muted-foreground);
+  max-width: 75ch;
+}
+
+.exam-stats-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.exam-stats-grid .ui-card__header {
+  padding-bottom: 1rem;
+}
+
+.exam-stats-grid .ui-card__description {
+  margin: 0 0 0.35rem;
+}
+
+.exam-stats-grid .ui-card__title {
+  font-size: 1.3rem;
+}
+
 .section-summary-list {
   margin: 0;
   padding-left: 1.25rem;
@@ -501,6 +530,10 @@ h1 {
 
 .exam-actions {
   margin-top: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
 }
 
 .primary-button {
