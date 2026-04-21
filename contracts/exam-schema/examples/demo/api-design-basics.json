@@ -1,0 +1,204 @@
+{
+  "schemaVersion": "1.0.0",
+  "metadata": {
+    "examId": "api-design-basics-v1",
+    "title": "API Design Basics",
+    "description": "Questões sobre REST, contratos HTTP, versionamento e idempotência.",
+    "language": "pt-BR",
+    "tags": [
+      "api",
+      "rest",
+      "http"
+    ]
+  },
+  "durationMinutes": 30,
+  "passingScore": 72,
+  "reconnectPolicy": {
+    "enabled": true,
+    "maxReconnects": 2,
+    "gracePeriodSeconds": 90,
+    "terminateIfExceeded": true
+  },
+  "sections": [
+    {
+      "sectionId": "api-http",
+      "title": "Fundamentos HTTP",
+      "questions": [
+        {
+          "questionId": "api-1",
+          "prompt": "Qual status code representa criação bem-sucedida de um recurso?",
+          "options": [
+            {
+              "optionId": "a",
+              "text": "200"
+            },
+            {
+              "optionId": "b",
+              "text": "201"
+            },
+            {
+              "optionId": "c",
+              "text": "204"
+            },
+            {
+              "optionId": "d",
+              "text": "409"
+            }
+          ],
+          "correctOptionId": "b",
+          "explanationSummary": "201 Created é o código padrão para criação.",
+          "explanationDetailed": "Em operações de criação, 201 comunica que o recurso foi criado e geralmente vem com header Location para a URL do novo recurso.",
+          "topic": "HTTP",
+          "difficulty": "easy",
+          "weight": 1
+        },
+        {
+          "questionId": "api-2",
+          "prompt": "Qual operação deve ser idempotente em uma API REST bem modelada?",
+          "options": [
+            {
+              "optionId": "a",
+              "text": "POST /orders"
+            },
+            {
+              "optionId": "b",
+              "text": "PATCH /orders/{id}/pay"
+            },
+            {
+              "optionId": "c",
+              "text": "PUT /users/{id}"
+            },
+            {
+              "optionId": "d",
+              "text": "POST /sessions"
+            }
+          ],
+          "correctOptionId": "c",
+          "explanationSummary": "PUT deve ser idempotente por definição.",
+          "explanationDetailed": "Executar PUT repetidas vezes com o mesmo payload deve levar ao mesmo estado do recurso. Isso facilita retries e aumenta robustez em cenários com falhas transitórias.",
+          "topic": "Idempotência",
+          "difficulty": "medium",
+          "weight": 1.25
+        },
+        {
+          "questionId": "api-3",
+          "prompt": "Qual é a principal vantagem de versionar APIs publicamente?",
+          "options": [
+            {
+              "optionId": "a",
+              "text": "Eliminar necessidade de documentação"
+            },
+            {
+              "optionId": "b",
+              "text": "Permitir evolução sem quebrar consumidores existentes"
+            },
+            {
+              "optionId": "c",
+              "text": "Aumentar latência para auditoria"
+            },
+            {
+              "optionId": "d",
+              "text": "Trocar autenticação por convenção"
+            }
+          ],
+          "correctOptionId": "b",
+          "explanationSummary": "Versionamento reduz quebra de contrato.",
+          "explanationDetailed": "Versionar permite introduzir mudanças incompatíveis com migração controlada dos clientes, mantendo previsibilidade operacional e reduzindo incidentes por breaking changes.",
+          "topic": "Versionamento",
+          "difficulty": "easy",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "sectionId": "api-contrato",
+      "title": "Contratos e Erros",
+      "questions": [
+        {
+          "questionId": "api-4",
+          "prompt": "Quando usar 422 Unprocessable Entity é apropriado?",
+          "options": [
+            {
+              "optionId": "a",
+              "text": "Quando o corpo está ausente e inválido como JSON"
+            },
+            {
+              "optionId": "b",
+              "text": "Quando a regra de negócio invalida dados semanticamente corretos"
+            },
+            {
+              "optionId": "c",
+              "text": "Quando o servidor caiu por timeout interno"
+            },
+            {
+              "optionId": "d",
+              "text": "Quando recurso não foi encontrado"
+            }
+          ],
+          "correctOptionId": "b",
+          "explanationSummary": "422 é útil para erros semânticos de validação.",
+          "explanationDetailed": "Se o payload é sintaticamente válido, mas viola regras de domínio ou validação de negócio, 422 comunica melhor o problema para o cliente do que um erro genérico.",
+          "topic": "Erros de API",
+          "difficulty": "medium",
+          "weight": 1.25
+        },
+        {
+          "questionId": "api-5",
+          "prompt": "Qual abordagem melhora observabilidade de falhas em APIs?",
+          "options": [
+            {
+              "optionId": "a",
+              "text": "Retornar erros sem traceId para evitar exposição"
+            },
+            {
+              "optionId": "b",
+              "text": "Padronizar respostas de erro com código, mensagem e correlation/trace id"
+            },
+            {
+              "optionId": "c",
+              "text": "Registrar apenas sucesso para reduzir logs"
+            },
+            {
+              "optionId": "d",
+              "text": "Remover métricas de latência"
+            }
+          ],
+          "correctOptionId": "b",
+          "explanationSummary": "Erros padronizados aceleram diagnóstico.",
+          "explanationDetailed": "Um contrato de erro consistente com identificador de correlação permite cruzar logs e métricas rapidamente, reduzindo MTTR e melhorando comunicação entre frontend e backend.",
+          "topic": "Observabilidade",
+          "difficulty": "medium",
+          "weight": 1.5
+        },
+        {
+          "questionId": "api-6",
+          "prompt": "Em coleções paginadas, qual metadado é mais útil para UX de navegação?",
+          "options": [
+            {
+              "optionId": "a",
+              "text": "Tamanho de stack da aplicação"
+            },
+            {
+              "optionId": "b",
+              "text": "Nome da máquina do banco"
+            },
+            {
+              "optionId": "c",
+              "text": "Total de itens e cursor/página seguinte"
+            },
+            {
+              "optionId": "d",
+              "text": "Lista completa de índices SQL"
+            }
+          ],
+          "correctOptionId": "c",
+          "explanationSummary": "Total e próxima página orientam navegação.",
+          "explanationDetailed": "Informar total (quando viável) e forma de avançar na paginação melhora experiência do usuário e simplifica componentes de listagem no frontend.",
+          "topic": "Paginação",
+          "difficulty": "easy",
+          "weight": 1
+        }
+      ]
+    }
+  ]
+}

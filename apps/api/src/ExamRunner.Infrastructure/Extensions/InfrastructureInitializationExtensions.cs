@@ -1,5 +1,6 @@
 using ExamRunner.Infrastructure.Data;
 using ExamRunner.Infrastructure.Data.Seed;
+using ExamRunner.Infrastructure.Import;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -13,16 +14,6 @@ public static class InfrastructureInitializationExtensions
 
         var dbContext = scope.ServiceProvider.GetRequiredService<ExamRunnerDbContext>();
         await EnsureDatabaseSchemaAsync(dbContext, cancellationToken);
-
-        if (await dbContext.Exams.AnyAsync(cancellationToken))
-        {
-            return;
-        }
-
-        var exams = SeedCatalog.CreateExams();
-        dbContext.Exams.AddRange(exams);
-
-        await dbContext.SaveChangesAsync(cancellationToken);
     }
 
     public static async Task SeedExampleExamFromFileAsync(
@@ -33,17 +24,89 @@ public static class InfrastructureInitializationExtensions
         await using var scope = services.CreateAsyncScope();
 
         var dbContext = scope.ServiceProvider.GetRequiredService<ExamRunnerDbContext>();
+        var schemaValidator = scope.ServiceProvider.GetRequiredService<IOfficialExamSchemaValidator>();
         await EnsureDatabaseSchemaAsync(dbContext, cancellationToken);
 
-        if (await dbContext.Exams.AnyAsync(cancellationToken))
+        if (!File.Exists(exampleFilePath))
+        {
+            throw new FileNotFoundException($"Seed file not found at '{exampleFilePath}'.", exampleFilePath);
+        }
+
+        var validationErrors = await schemaValidator.ValidateAsync(await File.ReadAllTextAsync(exampleFilePath, cancellationToken), cancellationToken);
+        if (validationErrors.Count > 0)
+        {
+            throw new InvalidOperationException($"Seed file '{exampleFilePath}' is invalid according to official schema: {string.Join("; ", validationErrors)}");
+        }
+
+        var exam = ExampleExamSeedFileParser.Parse(exampleFilePath);
+
+        if (await dbContext.Exams.AnyAsync(item => item.Id == exam.Id, cancellationToken))
         {
             return;
         }
 
-        var exam = ExampleExamSeedFileParser.Parse(exampleFilePath);
         dbContext.Exams.Add(exam);
-
         await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public static async Task<DemoSeedSummary> SeedDemoExamsFromDirectoryAsync(
+        this IServiceProvider services,
+        string directoryPath,
+        CancellationToken cancellationToken = default)
+    {
+        await using var scope = services.CreateAsyncScope();
+
+        var dbContext = scope.ServiceProvider.GetRequiredService<ExamRunnerDbContext>();
+        var schemaValidator = scope.ServiceProvider.GetRequiredService<IOfficialExamSchemaValidator>();
+        await EnsureDatabaseSchemaAsync(dbContext, cancellationToken);
+
+        if (!Directory.Exists(directoryPath))
+        {
+            throw new DirectoryNotFoundException($"Demo seed directory was not found at '{directoryPath}'.");
+        }
+
+        var foundFiles = Directory
+            .GetFiles(directoryPath, "*.json", SearchOption.TopDirectoryOnly)
+            .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        var summary = new DemoSeedSummary(foundFiles.Length);
+
+        foreach (var filePath in foundFiles)
+        {
+            var rawJson = await File.ReadAllTextAsync(filePath, cancellationToken);
+            var validationErrors = await schemaValidator.ValidateAsync(rawJson, cancellationToken);
+
+            if (validationErrors.Count > 0)
+            {
+                summary.InvalidFiles++;
+                summary.Failures.Add($"{Path.GetFileName(filePath)}: {string.Join("; ", validationErrors)}");
+                continue;
+            }
+
+            summary.ValidFiles++;
+
+            try
+            {
+                var exam = ExampleExamSeedFileParser.Parse(filePath);
+
+                if (await dbContext.Exams.AnyAsync(item => item.Id == exam.Id, cancellationToken))
+                {
+                    summary.Skipped++;
+                    continue;
+                }
+
+                dbContext.Exams.Add(exam);
+                await dbContext.SaveChangesAsync(cancellationToken);
+                summary.Imported++;
+            }
+            catch (Exception exception)
+            {
+                summary.Failures.Add($"{Path.GetFileName(filePath)}: {exception.Message}");
+            }
+        }
+
+        return summary;
     }
 
     private static async Task EnsureDatabaseSchemaAsync(ExamRunnerDbContext dbContext, CancellationToken cancellationToken)
@@ -92,4 +155,14 @@ public static class InfrastructureInitializationExtensions
             }
         }
     }
+}
+
+public sealed class DemoSeedSummary(int foundFiles)
+{
+    public int FoundFiles { get; } = foundFiles;
+    public int ValidFiles { get; set; }
+    public int InvalidFiles { get; set; }
+    public int Imported { get; set; }
+    public int Skipped { get; set; }
+    public List<string> Failures { get; } = [];
 }

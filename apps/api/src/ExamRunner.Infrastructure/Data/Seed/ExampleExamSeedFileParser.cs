@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using ExamRunner.Infrastructure.Data.Entities;
 
@@ -23,13 +25,15 @@ internal static class ExampleExamSeedFileParser
             throw new InvalidOperationException("Example exam JSON is missing metadata.");
         }
 
+        var examId = DeterministicGuid(payload.Metadata.ExamId);
+
         var exam = new ExamEntity
         {
-            Id = Guid.NewGuid(),
+            Id = examId,
             Title = payload.Metadata.Title,
             Description = payload.Metadata.Description,
             DurationMinutes = payload.DurationMinutes,
-            PassingScorePercentage = payload.PassingScore,
+            PassingScorePercentage = (int)Math.Round(payload.PassingScore),
             SchemaVersion = payload.SchemaVersion,
             ReconnectEnabled = payload.ReconnectPolicy.Enabled,
             MaxReconnectAttempts = payload.ReconnectPolicy.MaxReconnects,
@@ -42,7 +46,7 @@ internal static class ExampleExamSeedFileParser
         {
             var section = new ExamSectionEntity
             {
-                Id = Guid.NewGuid(),
+                Id = DeterministicGuid($"{payload.Metadata.ExamId}:section:{sectionPayload.SectionId}"),
                 SectionCode = sectionPayload.SectionId,
                 Title = sectionPayload.Title,
                 QuestionCount = sectionPayload.Questions.Count,
@@ -54,7 +58,7 @@ internal static class ExampleExamSeedFileParser
             {
                 var question = new QuestionEntity
                 {
-                    Id = Guid.NewGuid(),
+                    Id = DeterministicGuid($"{payload.Metadata.ExamId}:question:{questionPayload.QuestionId}"),
                     QuestionCode = questionPayload.QuestionId,
                     Prompt = questionPayload.Prompt,
                     ExplanationSummary = questionPayload.ExplanationSummary,
@@ -70,7 +74,7 @@ internal static class ExampleExamSeedFileParser
                 {
                     question.Options.Add(new QuestionOptionEntity
                     {
-                        Id = Guid.NewGuid(),
+                        Id = DeterministicGuid($"{payload.Metadata.ExamId}:question:{questionPayload.QuestionId}:option:{optionPayload.OptionId}"),
                         OptionCode = optionPayload.OptionId,
                         Text = optionPayload.Text,
                         IsCorrect = optionPayload.OptionId == questionPayload.CorrectOptionId,
@@ -87,11 +91,19 @@ internal static class ExampleExamSeedFileParser
         return exam;
     }
 
+    private static Guid DeterministicGuid(string value)
+    {
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(value));
+        var guidBytes = new byte[16];
+        Array.Copy(hash, guidBytes, guidBytes.Length);
+        return new Guid(guidBytes);
+    }
+
     private sealed record SeedExamPayload(
         string SchemaVersion,
         SeedMetadataPayload Metadata,
         int DurationMinutes,
-        int PassingScore,
+        decimal PassingScore,
         SeedReconnectPolicyPayload ReconnectPolicy,
         List<SeedSectionPayload> Sections);
 

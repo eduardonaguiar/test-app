@@ -1,0 +1,232 @@
+{
+  "schemaVersion": "1.0.0",
+  "metadata": {
+    "examId": "ddd-foundations-v1",
+    "title": "DDD Foundations",
+    "description": "Simulado sobre bounded contexts, aggregates e linguagem ubíqua.",
+    "language": "pt-BR",
+    "tags": [
+      "ddd",
+      "dominio",
+      "modelagem"
+    ]
+  },
+  "durationMinutes": 40,
+  "passingScore": 75,
+  "reconnectPolicy": {
+    "enabled": true,
+    "maxReconnects": 2,
+    "gracePeriodSeconds": 120,
+    "terminateIfExceeded": true
+  },
+  "sections": [
+    {
+      "sectionId": "ddd-core",
+      "title": "Conceitos centrais",
+      "questions": [
+        {
+          "questionId": "ddd-1",
+          "prompt": "Qual artefato define fronteiras semânticas e de modelo em DDD?",
+          "options": [
+            {
+              "optionId": "a",
+              "text": "Repository Pattern"
+            },
+            {
+              "optionId": "b",
+              "text": "Bounded Context"
+            },
+            {
+              "optionId": "c",
+              "text": "DTO"
+            },
+            {
+              "optionId": "d",
+              "text": "Load Balancer"
+            }
+          ],
+          "correctOptionId": "b",
+          "explanationSummary": "Bounded Context delimita modelo e linguagem.",
+          "explanationDetailed": "Cada bounded context possui termos e regras próprias, evitando ambiguidades. Integrações entre contextos exigem tradução explícita para preservar consistência.",
+          "topic": "DDD",
+          "difficulty": "easy",
+          "weight": 1
+        },
+        {
+          "questionId": "ddd-2",
+          "prompt": "Em um aggregate, qual regra deve ser priorizada?",
+          "options": [
+            {
+              "optionId": "a",
+              "text": "Qualquer entidade pode ser alterada diretamente por fora"
+            },
+            {
+              "optionId": "b",
+              "text": "Invariantes devem ser protegidas pelo aggregate root"
+            },
+            {
+              "optionId": "c",
+              "text": "Persistência deve acontecer sem transação"
+            },
+            {
+              "optionId": "d",
+              "text": "Eventos de domínio são proibidos"
+            }
+          ],
+          "correctOptionId": "b",
+          "explanationSummary": "Aggregate root controla invariantes.",
+          "explanationDetailed": "O aggregate root oferece ponto único para mudanças que afetam consistência interna. Isso reduz estados inválidos e facilita raciocínio sobre regras de negócio.",
+          "topic": "Aggregates",
+          "difficulty": "medium",
+          "weight": 1.5
+        },
+        {
+          "questionId": "ddd-3",
+          "prompt": "Qual exemplo representa melhor um Value Object?",
+          "options": [
+            {
+              "optionId": "a",
+              "text": "Pedido com identidade global"
+            },
+            {
+              "optionId": "b",
+              "text": "Cliente com ciclo de vida próprio"
+            },
+            {
+              "optionId": "c",
+              "text": "Dinheiro com valor e moeda, comparado por atributos"
+            },
+            {
+              "optionId": "d",
+              "text": "Fila de processamento assíncrono"
+            }
+          ],
+          "correctOptionId": "c",
+          "explanationSummary": "Value Objects são definidos por seus atributos.",
+          "explanationDetailed": "Objetos de valor não dependem de identidade para igualdade. Modelar conceitos como Dinheiro ou Endereço como value object aumenta expressividade e reduz efeitos colaterais.",
+          "topic": "Value Objects",
+          "difficulty": "easy",
+          "weight": 1.25
+        },
+        {
+          "questionId": "ddd-4",
+          "prompt": "Qual prática favorece linguagem ubíqua no time?",
+          "options": [
+            {
+              "optionId": "a",
+              "text": "Cada área usar termos diferentes para o mesmo conceito"
+            },
+            {
+              "optionId": "b",
+              "text": "Atualizar glossário e nomes de código junto com especialistas de domínio"
+            },
+            {
+              "optionId": "c",
+              "text": "Evitar participação do negócio em refinamentos"
+            },
+            {
+              "optionId": "d",
+              "text": "Priorizar abreviações internas não documentadas"
+            }
+          ],
+          "correctOptionId": "b",
+          "explanationSummary": "Linguagem ubíqua é construída em colaboração contínua.",
+          "explanationDetailed": "DDD depende de alinhamento semântico. Revisar termos com especialistas e refleti-los no código diminui traduções mentais e erros de entendimento entre equipes.",
+          "topic": "Linguagem Ubíqua",
+          "difficulty": "medium",
+          "weight": 1.25
+        }
+      ]
+    },
+    {
+      "sectionId": "ddd-pratica",
+      "title": "Aplicação prática",
+      "questions": [
+        {
+          "questionId": "ddd-5",
+          "prompt": "Quando introduzir um Anti-Corruption Layer (ACL) faz mais sentido?",
+          "options": [
+            {
+              "optionId": "a",
+              "text": "Quando dois bounded contexts possuem modelos conflitantes"
+            },
+            {
+              "optionId": "b",
+              "text": "Quando o sistema é monolítico sem integrações"
+            },
+            {
+              "optionId": "c",
+              "text": "Quando todas as equipes usam o mesmo modelo"
+            },
+            {
+              "optionId": "d",
+              "text": "Quando não há necessidade de tradução de conceitos"
+            }
+          ],
+          "correctOptionId": "a",
+          "explanationSummary": "ACL protege o modelo interno em integrações.",
+          "explanationDetailed": "Ao integrar contextos com significados distintos, o ACL evita vazamento de conceitos externos para dentro do domínio central, mantendo coesão do modelo interno.",
+          "topic": "Integração entre Contextos",
+          "difficulty": "hard",
+          "weight": 1.75
+        },
+        {
+          "questionId": "ddd-6",
+          "prompt": "Qual é um sinal de modelo anêmico em uma camada de domínio?",
+          "options": [
+            {
+              "optionId": "a",
+              "text": "Entidades com comportamento e validações próprias"
+            },
+            {
+              "optionId": "b",
+              "text": "Regras concentradas em services genéricos enquanto entidades viram apenas estruturas de dados"
+            },
+            {
+              "optionId": "c",
+              "text": "Uso de invariantes no aggregate root"
+            },
+            {
+              "optionId": "d",
+              "text": "Validação de entrada em comandos"
+            }
+          ],
+          "correctOptionId": "b",
+          "explanationSummary": "Modelo anêmico desloca comportamento para fora das entidades.",
+          "explanationDetailed": "Quando entidades perdem comportamento, regras ficam dispersas e mais frágeis. Um modelo rico centraliza invariantes onde os dados vivem, melhorando manutenção e clareza.",
+          "topic": "Modelagem de Domínio",
+          "difficulty": "hard",
+          "weight": 1.5
+        },
+        {
+          "questionId": "ddd-7",
+          "prompt": "Em termos de consistência, qual estratégia costuma ser preferida entre aggregates distintos?",
+          "options": [
+            {
+              "optionId": "a",
+              "text": "Transações distribuídas síncronas sempre"
+            },
+            {
+              "optionId": "b",
+              "text": "Consistência eventual via eventos de domínio/integracao quando apropriado"
+            },
+            {
+              "optionId": "c",
+              "text": "Compartilhar tabela única para todos os contextos"
+            },
+            {
+              "optionId": "d",
+              "text": "Atualizar estados manualmente no frontend"
+            }
+          ],
+          "correctOptionId": "b",
+          "explanationSummary": "Entre aggregates distintos, consistência eventual costuma ser mais escalável.",
+          "explanationDetailed": "DDD desencoraja transações amplas entre múltiplos aggregates. Eventos permitem coordenação assíncrona com menor acoplamento, aceitando latência controlada de consistência.",
+          "topic": "Consistência",
+          "difficulty": "hard",
+          "weight": 1.75
+        }
+      ]
+    }
+  ]
+}
