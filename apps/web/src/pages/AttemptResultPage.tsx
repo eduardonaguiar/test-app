@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { exportAttemptReviewHtml } from '../services/attemptReviewExport';
 import {
   applyReviewFilters,
   DEFAULT_REVIEW_FILTERS,
@@ -53,6 +54,14 @@ type AttemptResultResponse = {
   topicAnalysis: AttemptResultTopicAnalysisResponse[];
 };
 
+type AttemptExecutionSnapshotResponse = {
+  startedAt: string;
+};
+
+type ExamTitleResponse = {
+  title: string;
+};
+
 function normalizePercentage(value: number): string {
   const normalized = Number.isFinite(value) ? value : 0;
   return `${normalized.toFixed(1)}%`;
@@ -84,6 +93,10 @@ export function AttemptResultPage() {
   const [result, setResult] = useState<AttemptResultResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [filters, setFilters] = useState<QuestionReviewFilterState>(DEFAULT_REVIEW_FILTERS);
+  const [examTitle, setExamTitle] = useState<string>('');
+  const [startedAt, setStartedAt] = useState<string | null>(null);
+  const [exportFeedback, setExportFeedback] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     if (!attemptId) {
@@ -114,6 +127,32 @@ export function AttemptResultPage() {
 
       const payload = (await response.json()) as AttemptResultResponse;
       setResult(payload);
+
+      fetch(`/api/attempts/${attemptId}`, { signal: controller.signal })
+        .then(async (attemptResponse) => {
+          if (!attemptResponse.ok) {
+            return;
+          }
+
+          const attemptPayload = (await attemptResponse.json()) as AttemptExecutionSnapshotResponse;
+          setStartedAt(attemptPayload.startedAt);
+        })
+        .catch(() => {
+          setStartedAt(null);
+        });
+
+      fetch(`/api/exams/${payload.examId}`, { signal: controller.signal })
+        .then(async (examResponse) => {
+          if (!examResponse.ok) {
+            return;
+          }
+
+          const examPayload = (await examResponse.json()) as ExamTitleResponse;
+          setExamTitle(examPayload.title);
+        })
+        .catch(() => {
+          setExamTitle('');
+        });
     }
 
     loadResult().catch((error) => {
@@ -136,6 +175,28 @@ export function AttemptResultPage() {
     setFilters((current) => ({ ...current, [key]: value }));
   }
 
+  function handleExportHtml() {
+    if (!result || isExporting) {
+      return;
+    }
+
+    setIsExporting(true);
+    setExportFeedback('Gerando arquivo HTML da revisão...');
+
+    try {
+      const fileName = exportAttemptReviewHtml(result, {
+        examTitle,
+        startedAt: startedAt ?? undefined,
+      });
+
+      setExportFeedback(`Exportação concluída: ${fileName}`);
+    } catch {
+      setExportFeedback('Falha ao exportar a revisão. Tente novamente.');
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
   return (
     <main className="page">
       <div className="inline-links">
@@ -152,8 +213,16 @@ export function AttemptResultPage() {
       ) : result ? (
         <>
           <header className="exam-details-header">
-            <h1>Resultado final da tentativa</h1>
-            <p className="subtitle">Tentativa {result.attemptId}</p>
+            <div className="review-title-row">
+              <div>
+                <h1>Resultado final da tentativa</h1>
+                <p className="subtitle">Tentativa {result.attemptId}</p>
+              </div>
+              <button type="button" className="details-button secondary as-button" onClick={handleExportHtml} disabled={isExporting}>
+                {isExporting ? 'Exportando revisão...' : 'Exportar revisão (HTML)'}
+              </button>
+            </div>
+            {exportFeedback ? <p className="start-hint">{exportFeedback}</p> : null}
           </header>
 
           <section className="exam-card" aria-label="Resumo da nota">
@@ -261,48 +330,48 @@ export function AttemptResultPage() {
             <div className="review-list">
               {filteredReviews.length > 0 ? (
                 filteredReviews.map((review) => {
-                const status = getReviewStatus(review);
-                const statusClass = status === 'Correta' ? 'correct' : status === 'Errada' ? 'incorrect' : 'unanswered';
+                  const status = getReviewStatus(review);
+                  const statusClass = status === 'Correta' ? 'correct' : status === 'Errada' ? 'incorrect' : 'unanswered';
 
-                return (
-                  <article key={review.questionId} className="review-item">
-                    <header className="review-item-header">
-                      <h3>
-                        {review.questionCode} · {review.sectionTitle}
-                      </h3>
-                      <span className={`review-status ${statusClass}`}>{status}</span>
-                    </header>
+                  return (
+                    <article key={review.questionId} className="review-item">
+                      <header className="review-item-header">
+                        <h3>
+                          {review.questionCode} · {review.sectionTitle}
+                        </h3>
+                        <span className={`review-status ${statusClass}`}>{status}</span>
+                      </header>
 
-                    <p>{review.prompt}</p>
-                    <p className="review-meta">
-                      <strong>Tópico:</strong> {review.topic} · <strong>Dificuldade:</strong> {review.difficulty}
-                    </p>
+                      <p>{review.prompt}</p>
+                      <p className="review-meta">
+                        <strong>Tópico:</strong> {review.topic} · <strong>Dificuldade:</strong> {review.difficulty}
+                      </p>
 
-                    <dl className="review-details">
-                      <div>
-                        <dt>Sua resposta</dt>
-                        <dd>
-                          {review.userSelectedOptionCode && review.userSelectedOptionText
-                            ? `${review.userSelectedOptionCode}) ${review.userSelectedOptionText}`
-                            : 'Não respondida'}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt>Resposta correta</dt>
-                        <dd>
-                          {review.correctOptionCode}) {review.correctOptionText}
-                        </dd>
-                      </div>
-                    </dl>
+                      <dl className="review-details">
+                        <div>
+                          <dt>Sua resposta</dt>
+                          <dd>
+                            {review.userSelectedOptionCode && review.userSelectedOptionText
+                              ? `${review.userSelectedOptionCode}) ${review.userSelectedOptionText}`
+                              : 'Não respondida'}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>Resposta correta</dt>
+                          <dd>
+                            {review.correctOptionCode}) {review.correctOptionText}
+                          </dd>
+                        </div>
+                      </dl>
 
-                    <p>
-                      <strong>Resumo:</strong> {review.explanationSummary}
-                    </p>
-                    <p>
-                      <strong>Comentário detalhado:</strong> {review.explanationDetails}
-                    </p>
-                  </article>
-                );
+                      <p>
+                        <strong>Resumo:</strong> {review.explanationSummary}
+                      </p>
+                      <p>
+                        <strong>Comentário detalhado:</strong> {review.explanationDetails}
+                      </p>
+                    </article>
+                  );
                 })
               ) : (
                 <article className="review-empty-state">
