@@ -1,3 +1,8 @@
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
+import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
+
 type FilePickerProps = {
   selectedFile: File | null;
   fileError: string | null;
@@ -21,37 +26,52 @@ function formatFileSize(bytes: number): string {
 
 export function FilePicker({ selectedFile, fileError, isSubmitting, onFileSelected }: FilePickerProps) {
   return (
-    <section className="exam-card" aria-label="Seleção do arquivo JSON">
-      <h2>Arquivo da prova</h2>
-      <p>Selecione um arquivo local no formato .json.</p>
-
-      <input
-        type="file"
-        accept=".json,application/json"
-        onChange={(event) => {
-          const file = event.target.files?.[0] ?? null;
-          onFileSelected(file);
-        }}
-        disabled={isSubmitting}
-      />
-
-      {selectedFile ? (
-        <div className="file-info">
-          <p>
-            <strong>Nome:</strong> {selectedFile.name}
-          </p>
-          <p>
-            <strong>Tamanho:</strong> {formatFileSize(selectedFile.size)}
-          </p>
-          <p>
-            <strong>Status:</strong> pronto para importação
-          </p>
+    <Card aria-label="Seleção do arquivo JSON">
+      <CardHeader>
+        <CardTitle>Arquivo da prova</CardTitle>
+        <CardDescription>Selecione um arquivo local no formato .json.</CardDescription>
+      </CardHeader>
+      <CardContent className="field-grid">
+        <div>
+          <Label htmlFor="exam-json">Arquivo JSON</Label>
+          <Input
+            id="exam-json"
+            type="file"
+            accept=".json,application/json"
+            onChange={(event) => {
+              const file = event.target.files?.[0] ?? null;
+              onFileSelected(file);
+            }}
+            disabled={isSubmitting}
+          />
         </div>
-      ) : (
-        <p className="file-hint">Nenhum arquivo selecionado.</p>
-      )}
 
-      {fileError ? <p className="feedback-error">{fileError}</p> : null}
-    </section>
+        {selectedFile ? (
+          <dl className="meta-grid">
+            <div>
+              <dt>Nome</dt>
+              <dd>{selectedFile.name}</dd>
+            </div>
+            <div>
+              <dt>Tamanho</dt>
+              <dd>{formatFileSize(selectedFile.size)}</dd>
+            </div>
+            <div>
+              <dt>Status</dt>
+              <dd>Pronto para importação</dd>
+            </div>
+          </dl>
+        ) : (
+          <p className="subtitle">Nenhum arquivo selecionado.</p>
+        )}
+
+        {fileError ? (
+          <Alert variant="destructive">
+            <AlertTitle>Falha na leitura do arquivo</AlertTitle>
+            <AlertDescription>{fileError}</AlertDescription>
+          </Alert>
+        ) : null}
+      </CardContent>
+    </Card>
   );
 }
