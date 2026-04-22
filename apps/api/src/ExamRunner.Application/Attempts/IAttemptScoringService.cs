@@ -1,4 +1,4 @@
-namespace ExamRunner.Infrastructure.Attempts;
+namespace ExamRunner.Application.Attempts;
 
 public interface IAttemptScoringService
 {

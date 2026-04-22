@@ -11,6 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\ExamRunner.Application\ExamRunner.Application.csproj" />
     <ProjectReference Include="..\ExamRunner.Infrastructure\ExamRunner.Infrastructure.csproj" />
   </ItemGroup>
 </Project>

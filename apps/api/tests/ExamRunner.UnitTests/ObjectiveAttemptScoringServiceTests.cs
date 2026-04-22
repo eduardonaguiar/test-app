@@ -1,3 +1,4 @@
+using ExamRunner.Application.Attempts;
 using ExamRunner.Infrastructure.Attempts;
 using FluentAssertions;
 

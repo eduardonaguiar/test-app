@@ -1,3 +1,5 @@
+using ExamRunner.Application.Attempts;
+using ExamRunner.Domain.Attempts;
 using ExamRunner.Infrastructure.Attempts;
 using ExamRunner.Infrastructure.Data;
 using ExamRunner.Infrastructure.Data.Entities;

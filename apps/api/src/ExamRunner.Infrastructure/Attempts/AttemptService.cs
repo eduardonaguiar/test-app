@@ -1,3 +1,5 @@
+using ExamRunner.Application.Attempts;
+using ExamRunner.Domain.Attempts;
 using ExamRunner.Infrastructure.Data;
 using ExamRunner.Infrastructure.Data.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -162,7 +164,7 @@ public sealed class AttemptService(
         }
 
         var now = timeProvider.GetUtcNow();
-        var hasTimelineTransition = UpdateAttemptStatusFromTimeline(attempt, now);
+        var hasTimelineTransition = ApplyTimelineTransition(attempt, now);
 
         if (hasTimelineTransition)
         {
@@ -182,7 +184,7 @@ public sealed class AttemptService(
         }
 
         var now = timeProvider.GetUtcNow();
-        var hasTimelineTransition = UpdateAttemptStatusFromTimeline(attempt, now);
+        var hasTimelineTransition = ApplyTimelineTransition(attempt, now);
 
         if (hasTimelineTransition)
         {
@@ -234,7 +236,7 @@ public sealed class AttemptService(
         }
 
         var now = timeProvider.GetUtcNow();
-        var hasTimelineTransition = UpdateAttemptStatusFromTimeline(attempt, now);
+        var hasTimelineTransition = ApplyTimelineTransition(attempt, now);
 
         if (hasTimelineTransition)
         {
@@ -246,28 +248,29 @@ public sealed class AttemptService(
             throw new InvalidOperationException("Only attempts in progress can be reconnected.");
         }
 
-        var reconnectSequence = attempt.ReconnectEvents.Count + 1;
         var disconnectedAt = attempt.LastSeenAtUtc;
-        var offlineDurationSeconds = (int)Math.Max(0, Math.Floor((now - disconnectedAt).TotalSeconds));
-        var reconnectPolicyEnabled = attempt.Exam.ReconnectEnabled;
-        var gracePeriodRespected = !reconnectPolicyEnabled || offlineDurationSeconds <= attempt.Exam.ReconnectGracePeriodSeconds;
-        var maxReconnectsRespected = !reconnectPolicyEnabled || reconnectSequence <= attempt.Exam.MaxReconnectAttempts;
-        var policyExceeded = reconnectPolicyEnabled && (!gracePeriodRespected || !maxReconnectsRespected);
-        var finalizeAttempt = policyExceeded && attempt.Exam.ReconnectTerminateIfExceeded;
+        var reconnectDecision = AttemptLifecyclePolicy.EvaluateReconnect(
+            attempt.Exam.ReconnectEnabled,
+            attempt.Exam.MaxReconnectAttempts,
+            attempt.Exam.ReconnectGracePeriodSeconds,
+            attempt.Exam.ReconnectTerminateIfExceeded,
+            attempt.ReconnectEvents.Count,
+            disconnectedAt,
+            now);
 
         attempt.ReconnectEvents.Add(new ReconnectEventEntity
         {
             Id = Guid.NewGuid(),
             AttemptId = attempt.Id,
-            SequenceNumber = reconnectSequence,
+            SequenceNumber = reconnectDecision.SequenceNumber,
             DisconnectedAtUtc = disconnectedAt,
             ReconnectedAtUtc = now,
-            OfflineDurationSeconds = offlineDurationSeconds,
-            GracePeriodRespected = gracePeriodRespected,
-            FinalizedAttempt = finalizeAttempt
+            OfflineDurationSeconds = reconnectDecision.OfflineDurationSeconds,
+            GracePeriodRespected = reconnectDecision.GracePeriodRespected,
+            FinalizedAttempt = reconnectDecision.FinalizeAttempt
         });
 
-        if (finalizeAttempt)
+        if (reconnectDecision.FinalizeAttempt)
         {
             attempt.Status = AttemptStatuses.Finalized;
             attempt.SubmittedAtUtc ??= now;
@@ -289,7 +292,7 @@ public sealed class AttemptService(
         }
 
         var now = timeProvider.GetUtcNow();
-        var hasTimelineTransition = UpdateAttemptStatusFromTimeline(attempt, now);
+        var hasTimelineTransition = ApplyTimelineTransition(attempt, now);
 
         if (hasTimelineTransition)
         {
@@ -358,7 +361,7 @@ public sealed class AttemptService(
         }
 
         var now = timeProvider.GetUtcNow();
-        var hasTimelineTransition = UpdateAttemptStatusFromTimeline(attempt, now);
+        var hasTimelineTransition = ApplyTimelineTransition(attempt, now);
 
         if (hasTimelineTransition)
         {
@@ -470,14 +473,9 @@ public sealed class AttemptService(
             .SingleOrDefaultAsync(x => x.Id == attemptId, cancellationToken);
     }
 
-    private static bool UpdateAttemptStatusFromTimeline(AttemptEntity attempt, DateTimeOffset now)
+    private static bool ApplyTimelineTransition(AttemptEntity attempt, DateTimeOffset now)
     {
-        if (attempt.Status != AttemptStatuses.InProgress)
-        {
-            return false;
-        }
-
-        if (now < attempt.DeadlineAtUtc)
+        if (!AttemptLifecyclePolicy.TryFinalizeByDeadline(attempt.Status, attempt.DeadlineAtUtc, now))
         {
             return false;
         }
