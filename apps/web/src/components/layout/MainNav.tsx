@@ -27,6 +27,11 @@ const NAV_ITEMS: MainNavItem[] = [
     label: 'Dashboard',
     matches: (pathname) => pathname.startsWith('/dashboard'),
   },
+  {
+    to: '/authoring/tests',
+    label: 'Autoria',
+    matches: (pathname) => pathname.startsWith('/authoring/tests'),
+  },
 ];
 
 export function MainNav() {

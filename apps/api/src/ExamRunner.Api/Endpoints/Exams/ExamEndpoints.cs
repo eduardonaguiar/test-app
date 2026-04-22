@@ -28,6 +28,13 @@ public static class ExamEndpoints
             .Produces<ListExamsResponse>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status500InternalServerError);
 
+        app.MapGet("/exams/authoring", ListAuthoringTests)
+            .WithName("ListAuthoringTests")
+            .WithTags("Exams")
+            .WithSummary("Lista testes para fluxo de autoria e manutenção")
+            .Produces<ListAuthoringTestsResponse>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
+
         app.MapGet("/exams/{examId:guid}", GetExamById)
             .WithName("GetExamById")
             .WithTags("Exams")
@@ -95,6 +102,26 @@ public static class ExamEndpoints
             .ToArray();
 
         return TypedResults.Ok(new ListExamsResponse(items));
+    }
+
+    private static async Task<Ok<ListAuthoringTestsResponse>> ListAuthoringTests(
+        IExamReadRepository repository,
+        CancellationToken cancellationToken)
+    {
+        var tests = await repository.ListAuthoringAsync(cancellationToken);
+
+        var items = tests
+            .Select(test => new AuthoringTestSummaryResponse(
+                ExamId: test.ExamId,
+                Title: test.Title,
+                Description: test.Description,
+                Status: test.Status,
+                QuestionCount: test.QuestionCount,
+                SectionCount: test.SectionCount,
+                UpdatedAt: test.UpdatedAtUtc))
+            .ToArray();
+
+        return TypedResults.Ok(new ListAuthoringTestsResponse(items));
     }
 
     private static async Task<Results<Ok<ExamDetailResponse>, NotFound<ProblemDetails>>> GetExamById(
