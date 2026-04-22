@@ -8,6 +8,7 @@ import { HistoryPage } from './pages/HistoryPage';
 import { ImportExamPage } from './pages/ImportExamPage';
 import { PerformanceDashboardPage } from './pages/PerformanceDashboardPage';
 import { AuthoringTestsPage } from './pages/AuthoringTestsPage';
+import { AuthoringTestEditorPage } from './pages/AuthoringTestEditorPage';
 
 function PlaceholderPage() {
   return (
@@ -21,6 +22,8 @@ function PlaceholderPage() {
 export function App() {
   return (
     <Routes>
+      <Route path="/authoring/tests/new" element={<AuthoringTestEditorPage />} />
+      <Route path="/authoring/tests/:examId/edit" element={<AuthoringTestEditorPage />} />
       <Route element={<AppShell />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/exams/import" element={<ImportExamPage />} />
