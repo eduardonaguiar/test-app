@@ -1743,6 +1743,23 @@ h1 {
   color: var(--warning);
 }
 
+.editor-header__save-indicator.is-dirty {
+  color: var(--warning);
+}
+
+.editor-header__save-indicator.is-saved {
+  color: var(--success);
+}
+
+.editor-header__save-meta {
+  color: var(--muted-foreground);
+  font-size: 0.78rem;
+}
+
+.editor-header__save-meta.is-error {
+  color: var(--destructive);
+}
+
 .editor-header__actions {
   display: flex;
   align-items: center;

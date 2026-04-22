@@ -1,3 +1,4 @@
+import type { SaveStatus } from '../../hooks/useEditorAutosave';
 import { Link } from 'react-router-dom';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -15,7 +16,9 @@ import {
 type EditorHeaderProps = {
   title: string;
   status: 'draft' | 'published';
-  saveState: 'saved' | 'saving' | 'error';
+  saveState: SaveStatus;
+  lastSavedAt?: Date | null;
+  saveErrorMessage?: string | null;
   warningCount: number;
   sectionCount?: number;
   questionCount?: number;
@@ -31,6 +34,14 @@ function getStatusLabel(status: EditorHeaderProps['status']) {
 }
 
 function getSaveLabel(saveState: EditorHeaderProps['saveState']) {
+  if (saveState === 'idle') {
+    return 'Sem mudanças pendentes';
+  }
+
+  if (saveState === 'dirty') {
+    return 'Alterações pendentes';
+  }
+
   if (saveState === 'saving') {
     return 'Salvando...';
   }
@@ -46,6 +57,8 @@ export function EditorHeader({
   title,
   status,
   saveState,
+  lastSavedAt = null,
+  saveErrorMessage,
   warningCount,
   sectionCount = 0,
   questionCount = 0,
@@ -67,6 +80,14 @@ export function EditorHeader({
             <div className="editor-header__status-row">
               <Badge variant={status === 'published' ? 'success' : 'secondary'}>{getStatusLabel(status)}</Badge>
               <span className={`editor-header__save-indicator is-${saveState}`}>{getSaveLabel(saveState)}</span>
+              {saveState === 'saved' && lastSavedAt ? (
+                <span className="editor-header__save-meta">
+                  {`às ${lastSavedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`}
+                </span>
+              ) : null}
+              {saveState === 'error' && saveErrorMessage ? (
+                <span className="editor-header__save-meta is-error">{saveErrorMessage}</span>
+              ) : null}
             </div>
           </div>
         </div>
