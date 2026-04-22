@@ -10,6 +10,7 @@ public sealed class ExamReadRepository(ExamRunnerDbContext dbContext) : IExamRea
     {
         var exams = await dbContext.Exams
             .AsNoTracking()
+            .Where(exam => exam.EditorialStatus == ExamEntity.PublishedStatus)
             .Select(exam => new
             {
                 exam.Id,
@@ -62,8 +63,7 @@ public sealed class ExamReadRepository(ExamRunnerDbContext dbContext) : IExamRea
                     .Select(attempt => attempt.LastSeenAtUtc)
                     .OrderByDescending(lastSeenAt => lastSeenAt)
                     .FirstOrDefault(),
-                HasSubmittedAttempts = dbContext.Attempts
-                    .Any(attempt => attempt.ExamId == exam.Id && attempt.SubmittedAtUtc != null)
+                exam.EditorialStatus
             })
             .OrderByDescending(exam => exam.LastAttemptAt)
             .ThenBy(exam => exam.Title)
@@ -75,7 +75,7 @@ public sealed class ExamReadRepository(ExamRunnerDbContext dbContext) : IExamRea
                 ExamId: exam.Id,
                 Title: exam.Title,
                 Description: exam.Description,
-                Status: exam.HasSubmittedAttempts ? "published" : "draft",
+                Status: exam.EditorialStatus,
                 QuestionCount: exam.QuestionCount,
                 SectionCount: exam.SectionCount,
                 UpdatedAtUtc: exam.LastAttemptAt == default ? null : exam.LastAttemptAt))

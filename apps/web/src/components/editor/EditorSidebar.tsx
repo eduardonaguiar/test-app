@@ -1,5 +1,14 @@
 import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
+import {
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogRoot,
+  DialogTitle,
+  DialogTrigger,
+} from '../ui/dialog';
 import type { EditorialValidationResult } from '../../services/editorialValidation';
 
 type EditorSidebarProps = {
@@ -7,6 +16,7 @@ type EditorSidebarProps = {
   validation: EditorialValidationResult;
   onPublish: () => void;
   publishDisabled: boolean;
+  publishBlockedReason?: string;
 };
 
 function getEditorialState(validation: EditorialValidationResult, status: 'draft' | 'published') {
@@ -21,7 +31,7 @@ function getEditorialState(validation: EditorialValidationResult, status: 'draft
   return 'Pronto para publicação';
 }
 
-export function EditorSidebar({ status, validation, onPublish, publishDisabled }: EditorSidebarProps) {
+export function EditorSidebar({ status, validation, onPublish, publishDisabled, publishBlockedReason }: EditorSidebarProps) {
   return (
     <aside className="editor-sidebar" aria-label="Resumo editorial">
       <section className="editor-sidebar__card">
@@ -78,9 +88,27 @@ export function EditorSidebar({ status, validation, onPublish, publishDisabled }
         ) : null}
       </section>
 
-      <Button onClick={onPublish} disabled={publishDisabled} title={publishDisabled ? 'Corrija os erros impeditivos para publicar.' : undefined}>
-        Publicar teste
-      </Button>
+      <DialogRoot>
+        <DialogTrigger
+          className="ui-button ui-button--default ui-button--default-size"
+          disabled={publishDisabled}
+          title={publishDisabled ? publishBlockedReason ?? 'Corrija os erros impeditivos para publicar.' : undefined}
+        >
+          Publicar teste
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar publicação</DialogTitle>
+            <DialogDescription>A prova será disponibilizada no catálogo de simulados após esta ação.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose className="ui-button ui-button--outline ui-button--default-size">Cancelar</DialogClose>
+            <DialogClose className="ui-button ui-button--default ui-button--default-size" onClick={onPublish}>
+              Confirmar publicação
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </DialogRoot>
     </aside>
   );
 }

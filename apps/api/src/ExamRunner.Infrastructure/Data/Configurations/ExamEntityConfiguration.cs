@@ -36,6 +36,13 @@ public sealed class ExamEntityConfiguration : IEntityTypeConfiguration<ExamEntit
         builder.Property(x => x.ReconnectTerminateIfExceeded)
             .HasDefaultValue(true);
 
+        builder.Property(x => x.EditorialStatus)
+            .HasMaxLength(32)
+            .HasDefaultValue(ExamEntity.DraftStatus)
+            .IsRequired();
+
+        builder.Property(x => x.PublishedAtUtc);
+
         builder.HasMany(x => x.Sections)
             .WithOne(x => x.Exam)
             .HasForeignKey(x => x.ExamId)

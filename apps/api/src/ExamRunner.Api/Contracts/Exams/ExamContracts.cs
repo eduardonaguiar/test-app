@@ -54,6 +54,7 @@ public sealed record ExamDetailResponse(
     Guid ExamId,
     string Title,
     string Description,
+    string Status,
     int DurationMinutes,
     int PassingScorePercentage,
     string SchemaVersion,
@@ -63,3 +64,30 @@ public sealed record ExamDetailResponse(
     IReadOnlyList<ExamSectionDetailResponse> Sections);
 
 public sealed record ImportExamResponse(Guid ExamId, string Title, int SectionCount, int QuestionCount);
+
+public sealed record EditorialValidationIssueResponse(
+    string Code,
+    string Severity,
+    string Scope,
+    string Message,
+    string? Path,
+    string? EntityId);
+
+public sealed record EditorialValidationSummaryResponse(
+    int BlockingErrorCount,
+    int WarningCount,
+    int SectionCount,
+    int QuestionCount,
+    int ValidQuestionCount);
+
+public sealed record EditorialValidationResultResponse(
+    bool IsPublishable,
+    IReadOnlyList<EditorialValidationIssueResponse> BlockingErrors,
+    IReadOnlyList<EditorialValidationIssueResponse> Warnings,
+    EditorialValidationSummaryResponse Summary);
+
+public sealed record PublishExamResponse(
+    Guid ExamId,
+    string Status,
+    DateTimeOffset PublishedAt,
+    EditorialValidationResultResponse Validation);

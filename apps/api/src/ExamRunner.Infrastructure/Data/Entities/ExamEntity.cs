@@ -2,6 +2,9 @@ namespace ExamRunner.Infrastructure.Data.Entities;
 
 public sealed class ExamEntity
 {
+    public const string DraftStatus = "draft";
+    public const string PublishedStatus = "published";
+
     public Guid Id { get; set; }
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
@@ -12,6 +15,8 @@ public sealed class ExamEntity
     public int MaxReconnectAttempts { get; set; }
     public int ReconnectGracePeriodSeconds { get; set; }
     public bool ReconnectTerminateIfExceeded { get; set; }
+    public string EditorialStatus { get; set; } = DraftStatus;
+    public DateTimeOffset? PublishedAtUtc { get; set; }
 
     public List<ExamSectionEntity> Sections { get; set; } = [];
     public List<AttemptEntity> Attempts { get; set; } = [];
