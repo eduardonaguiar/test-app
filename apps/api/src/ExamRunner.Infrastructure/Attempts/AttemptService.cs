@@ -18,11 +18,11 @@ public sealed class AttemptService(
             .Include(x => x.Exam)
             .Include(x => x.Result)
             .Where(x => x.Status != AttemptStatuses.InProgress)
-            .OrderByDescending(x => x.SubmittedAtUtc ?? x.StartedAtUtc)
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
         return attempts
+            .OrderByDescending(attempt => attempt.SubmittedAtUtc ?? attempt.StartedAtUtc)
             .Select(attempt =>
             {
                 var effectiveEndAt = attempt.SubmittedAtUtc ?? attempt.LastSeenAtUtc;
@@ -47,9 +47,12 @@ public sealed class AttemptService(
         var attempts = await dbContext.Attempts
             .Include(x => x.Result)
             .Where(x => x.Result != null && x.Status != AttemptStatuses.InProgress)
-            .OrderBy(x => x.SubmittedAtUtc ?? x.StartedAtUtc)
             .AsNoTracking()
             .ToListAsync(cancellationToken);
+
+        attempts = attempts
+            .OrderBy(attempt => attempt.SubmittedAtUtc ?? attempt.StartedAtUtc)
+            .ToList();
 
         var trend = attempts
             .Select((attempt, index) => new AttemptTrendPointSnapshot(
