@@ -4,14 +4,19 @@ import { EditorHeader } from '../components/editor/EditorHeader';
 import { EditorShell } from '../components/editor/EditorShell';
 import { EditorSidebar } from '../components/editor/EditorSidebar';
 import { EditorTabs, type EditorTabKey } from '../components/editor/EditorTabs';
+import { QuestionList } from '../components/editor/QuestionList';
 import { SectionsEditor } from '../components/editor/SectionsEditor';
 import { TestGeneralForm } from '../components/editor/TestGeneralForm';
 import { validateGeneralMetadata } from '../components/editor/generalMetadataValidation';
 import { InlineError } from '../components/feedback/InlineError';
 import { PageLoading } from '../components/feedback/PageLoading';
-import { Textarea } from '../components/ui/textarea';
 import { useToast } from '../hooks/useToast';
-import { createEmptyEditorExam, getEditorExam, saveEditorExam, type EditorExamDraft } from '../services/authoringEditor';
+import {
+  createEmptyEditorExam,
+  getEditorExam,
+  saveEditorExam,
+  type EditorExamDraft,
+} from '../services/authoringEditor';
 
 type SaveState = 'saved' | 'saving' | 'error';
 
@@ -34,6 +39,7 @@ function buildValidation(
   let sectionsWithoutQuestions = 0;
   let questionsWithoutPrompt = 0;
   let questionsWithoutOptions = 0;
+  let questionsWithoutCorrectOption = 0;
 
   draft.sections.forEach((section) => {
     if (!section.title.trim()) {
@@ -53,6 +59,10 @@ function buildValidation(
       if (validOptions.length < 2) {
         questionsWithoutOptions += 1;
       }
+
+      if (!question.options.some((option) => option.optionId === question.correctOptionId)) {
+        questionsWithoutCorrectOption += 1;
+      }
     });
   });
 
@@ -68,8 +78,32 @@ function buildValidation(
     errors.push(`${questionsWithoutOptions} questão(ões) com menos de 2 alternativas válidas.`);
   }
 
+  if (questionsWithoutCorrectOption > 0) {
+    errors.push(`${questionsWithoutCorrectOption} questão(ões) sem resposta correta válida.`);
+  }
+
+  const questionsWithoutExplanations = draft.sections.reduce(
+    (total, section) =>
+      total +
+      section.questions.filter((question) => !question.explanationSummary.trim() || !question.explanationDetailed.trim()).length,
+    0,
+  );
+
+  const questionsWithoutTopic = draft.sections.reduce(
+    (total, section) => total + section.questions.filter((question) => !question.topic?.trim()).length,
+    0,
+  );
+
   if (sectionsWithoutQuestions > 0) {
     warnings.push(`${sectionsWithoutQuestions} seção(ões) ainda sem questões.`);
+  }
+
+  if (questionsWithoutExplanations > 0) {
+    warnings.push(`${questionsWithoutExplanations} questão(ões) sem explicação completa.`);
+  }
+
+  if (questionsWithoutTopic > 0) {
+    warnings.push(`${questionsWithoutTopic} questão(ões) sem tópico definido.`);
   }
 
   return { errors, warnings };
@@ -293,34 +327,63 @@ export function AuthoringTestEditorPage() {
           ) : null}
 
           {activeTab === 'questions' ? (
-            <section className="editor-form-section">
-              {draft.sections.flatMap((section) =>
-                section.questions.map((question, index) => (
-                  <label key={question.questionId} className="stack-xs">
-                    <span>
-                      {section.title || 'Seção sem título'} · Questão {index + 1}
-                    </span>
-                    <Textarea
-                      value={question.prompt}
-                      onChange={(event) =>
-                        setDraft({
-                          ...draft,
-                          sections: draft.sections.map((currentSection) => ({
-                            ...currentSection,
-                            questions: currentSection.questions.map((currentQuestion) =>
-                              currentQuestion.questionId === question.questionId
-                                ? { ...currentQuestion, prompt: event.target.value }
-                                : currentQuestion,
+            <QuestionList
+              sections={draft.sections}
+              onAddQuestion={(sectionId, question) =>
+                setDraft((current) => {
+                  if (!current) {
+                    return current;
+                  }
+
+                  return {
+                    ...current,
+                    sections: current.sections.map((section) =>
+                      section.sectionId === sectionId ? { ...section, questions: [...section.questions, question] } : section,
+                    ),
+                  };
+                })
+              }
+              onUpdateQuestion={(sectionId, question) =>
+                setDraft((current) => {
+                  if (!current) {
+                    return current;
+                  }
+
+                  return {
+                    ...current,
+                    sections: current.sections.map((section) =>
+                      section.sectionId === sectionId
+                        ? {
+                            ...section,
+                            questions: section.questions.map((existingQuestion) =>
+                              existingQuestion.questionId === question.questionId ? question : existingQuestion,
                             ),
-                          })),
-                        })
-                      }
-                      rows={4}
-                    />
-                  </label>
-                )),
-              )}
-            </section>
+                          }
+                        : section,
+                    ),
+                  };
+                })
+              }
+              onRemoveQuestion={(sectionId, questionId) =>
+                setDraft((current) => {
+                  if (!current) {
+                    return current;
+                  }
+
+                  return {
+                    ...current,
+                    sections: current.sections.map((section) =>
+                      section.sectionId === sectionId
+                        ? {
+                            ...section,
+                            questions: section.questions.filter((question) => question.questionId !== questionId),
+                          }
+                        : section,
+                    ),
+                  };
+                })
+              }
+            />
           ) : null}
 
           {activeTab === 'review' ? (
