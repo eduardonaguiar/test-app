@@ -1,18 +1,16 @@
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
+import type { EditorialValidationResult } from '../../services/editorialValidation';
 
 type EditorSidebarProps = {
   status: 'draft' | 'published';
-  sectionCount: number;
-  questionCount: number;
-  errors: string[];
-  warnings: string[];
+  validation: EditorialValidationResult;
   onPublish: () => void;
   publishDisabled: boolean;
 };
 
-function getEditorialState(errors: string[], status: 'draft' | 'published') {
-  if (errors.length > 0) {
+function getEditorialState(validation: EditorialValidationResult, status: 'draft' | 'published') {
+  if (validation.summary.blockingErrorCount > 0) {
     return 'Faltam itens obrigatórios';
   }
 
@@ -23,14 +21,15 @@ function getEditorialState(errors: string[], status: 'draft' | 'published') {
   return 'Pronto para publicação';
 }
 
-export function EditorSidebar({ status, sectionCount, questionCount, errors, warnings, onPublish, publishDisabled }: EditorSidebarProps) {
+export function EditorSidebar({ status, validation, onPublish, publishDisabled }: EditorSidebarProps) {
   return (
     <aside className="editor-sidebar" aria-label="Resumo editorial">
       <section className="editor-sidebar__card">
         <h2>Resumo</h2>
         <div className="editor-sidebar__status-row">
           <Badge variant={status === 'published' ? 'success' : 'secondary'}>{status === 'published' ? 'Publicado' : 'Rascunho'}</Badge>
-          <p>{getEditorialState(errors, status)}</p>
+          <p>{getEditorialState(validation, status)}</p>
+          <p>Publicável: {validation.isPublishable ? 'Sim' : 'Não'}</p>
         </div>
       </section>
 
@@ -39,43 +38,47 @@ export function EditorSidebar({ status, sectionCount, questionCount, errors, war
         <dl className="editor-sidebar__count-grid">
           <div>
             <dt>Seções</dt>
-            <dd>{sectionCount}</dd>
+            <dd>{validation.summary.sectionCount}</dd>
           </div>
           <div>
             <dt>Questões</dt>
-            <dd>{questionCount}</dd>
+            <dd>{validation.summary.questionCount}</dd>
+          </div>
+          <div>
+            <dt>Questões válidas</dt>
+            <dd>{validation.summary.validQuestionCount}</dd>
           </div>
         </dl>
       </section>
 
       <section className="editor-sidebar__card">
         <h2>Validação</h2>
-        {errors.length === 0 && warnings.length === 0 ? <p>Nenhum alerta no momento.</p> : null}
+        {validation.summary.blockingErrorCount === 0 && validation.summary.warningCount === 0 ? <p>Nenhum alerta no momento.</p> : null}
 
-        {errors.length > 0 ? (
+        {validation.blockingErrors.length > 0 ? (
           <>
-            <strong>Erros</strong>
+            <strong>Erros impeditivos: {validation.summary.blockingErrorCount}</strong>
             <ul>
-              {errors.map((error) => (
-                <li key={error}>{error}</li>
+              {validation.blockingErrors.slice(0, 4).map((error) => (
+                <li key={`${error.code}:${error.path ?? error.message}`}>{error.message}</li>
               ))}
             </ul>
           </>
         ) : null}
 
-        {warnings.length > 0 ? (
+        {validation.warnings.length > 0 ? (
           <>
-            <strong>Avisos</strong>
+            <strong>Avisos: {validation.summary.warningCount}</strong>
             <ul>
-              {warnings.map((warning) => (
-                <li key={warning}>{warning}</li>
+              {validation.warnings.slice(0, 4).map((warning) => (
+                <li key={`${warning.code}:${warning.path ?? warning.message}`}>{warning.message}</li>
               ))}
             </ul>
           </>
         ) : null}
       </section>
 
-      <Button onClick={onPublish} disabled={publishDisabled} title={publishDisabled ? 'Corrija os erros para publicar.' : undefined}>
+      <Button onClick={onPublish} disabled={publishDisabled} title={publishDisabled ? 'Corrija os erros impeditivos para publicar.' : undefined}>
         Publicar teste
       </Button>
     </aside>

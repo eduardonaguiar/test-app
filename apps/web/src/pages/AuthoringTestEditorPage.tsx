@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { EditorialConsistencyPanel } from '../components/editor/EditorialConsistencyPanel';
 import { EditorHeader } from '../components/editor/EditorHeader';
 import { EditorShell } from '../components/editor/EditorShell';
 import { EditorSidebar } from '../components/editor/EditorSidebar';
@@ -17,100 +18,15 @@ import {
   saveEditorExam,
   type EditorExamDraft,
 } from '../services/authoringEditor';
+import { validateExamEditorialState } from '../services/editorialValidation';
 
 type SaveState = 'saved' | 'saving' | 'error';
 
 function countQuestions(draft: EditorExamDraft): number {
   return draft.sections.reduce((total, section) => total + section.questions.length, 0);
 }
-
-function buildValidation(
-  draft: EditorExamDraft,
-  metadataValidation: ReturnType<typeof validateGeneralMetadata>,
-): { errors: string[]; warnings: string[] } {
-  const errors = [...metadataValidation.errors];
-  const warnings = [...metadataValidation.warnings];
-
-  if (draft.sections.length === 0) {
-    errors.push('Adicione ao menos uma seção.');
-  }
-
-  let untitledSections = 0;
-  let sectionsWithoutQuestions = 0;
-  let questionsWithoutPrompt = 0;
-  let questionsWithoutOptions = 0;
-  let questionsWithoutCorrectOption = 0;
-
-  draft.sections.forEach((section) => {
-    if (!section.title.trim()) {
-      untitledSections += 1;
-    }
-
-    if (section.questions.length === 0) {
-      sectionsWithoutQuestions += 1;
-    }
-
-    section.questions.forEach((question) => {
-      if (!question.prompt.trim()) {
-        questionsWithoutPrompt += 1;
-      }
-
-      const validOptions = question.options.filter((option) => option.text.trim().length > 0);
-      if (validOptions.length < 2) {
-        questionsWithoutOptions += 1;
-      }
-
-      if (!question.options.some((option) => option.optionId === question.correctOptionId)) {
-        questionsWithoutCorrectOption += 1;
-      }
-    });
-  });
-
-  if (untitledSections > 0) {
-    errors.push(`${untitledSections} seção(ões) sem título.`);
-  }
-
-  if (questionsWithoutPrompt > 0) {
-    errors.push(`${questionsWithoutPrompt} questão(ões) sem enunciado.`);
-  }
-
-  if (questionsWithoutOptions > 0) {
-    errors.push(`${questionsWithoutOptions} questão(ões) com menos de 2 alternativas válidas.`);
-  }
-
-  if (questionsWithoutCorrectOption > 0) {
-    errors.push(`${questionsWithoutCorrectOption} questão(ões) sem resposta correta válida.`);
-  }
-
-  const questionsWithoutExplanations = draft.sections.reduce(
-    (total, section) =>
-      total +
-      section.questions.filter((question) => !question.explanationSummary.trim() || !question.explanationDetailed.trim()).length,
-    0,
-  );
-
-  const questionsWithoutTopic = draft.sections.reduce(
-    (total, section) => total + section.questions.filter((question) => !question.topic?.trim()).length,
-    0,
-  );
-
-  if (sectionsWithoutQuestions > 0) {
-    warnings.push(`${sectionsWithoutQuestions} seção(ões) ainda sem questões.`);
-  }
-
-  if (questionsWithoutExplanations > 0) {
-    warnings.push(`${questionsWithoutExplanations} questão(ões) sem explicação completa.`);
-  }
-
-  if (questionsWithoutTopic > 0) {
-    warnings.push(`${questionsWithoutTopic} questão(ões) sem tópico definido.`);
-  }
-
-  return { errors, warnings };
-}
-
-function getTabState(activeTab: EditorTabKey, errors: string[]): Array<{ key: EditorTabKey; label: string; state: 'complete' | 'incomplete' | 'error' }> {
-  const hasErrors = errors.length > 0;
+function getTabState(activeTab: EditorTabKey, hasBlockingErrors: boolean): Array<{ key: EditorTabKey; label: string; state: 'complete' | 'incomplete' | 'error' }> {
+  const hasErrors = hasBlockingErrors;
 
   return [
     { key: 'general', label: 'Geral', state: hasErrors && activeTab === 'general' ? 'error' : 'complete' },
@@ -221,10 +137,7 @@ export function AuthoringTestEditorPage() {
   }, [draft, examId, toast]);
 
   const generalValidation = useMemo(() => (draft ? validateGeneralMetadata(draft) : null), [draft]);
-  const validation = useMemo(
-    () => (draft && generalValidation ? buildValidation(draft, generalValidation) : { errors: [], warnings: [] }),
-    [draft, generalValidation],
-  );
+  const editorialValidation = useMemo(() => (draft ? validateExamEditorialState(draft) : null), [draft]);
 
   if (isLoading) {
     return <PageLoading title="Abrindo editor" description="Carregando estrutura da prova para edição." />;
@@ -235,7 +148,7 @@ export function AuthoringTestEditorPage() {
   }
 
   const questionCount = countQuestions(draft);
-  const canPublish = validation.errors.length === 0;
+  const canPublish = editorialValidation?.isPublishable ?? false;
 
   return (
     <EditorShell
@@ -244,6 +157,7 @@ export function AuthoringTestEditorPage() {
           title={draft.title}
           status={draft.status}
           saveState={saveState}
+          warningCount={editorialValidation?.summary.warningCount ?? 0}
           onPublish={() => {
             if (!canPublish) {
               return;
@@ -255,7 +169,13 @@ export function AuthoringTestEditorPage() {
           publishDisabled={!canPublish}
         />
       }
-      tabs={<EditorTabs activeTab={activeTab} onChange={setActiveTab} items={getTabState(activeTab, validation.errors)} />}
+      tabs={
+        <EditorTabs
+          activeTab={activeTab}
+          onChange={setActiveTab}
+          items={getTabState(activeTab, (editorialValidation?.summary.blockingErrorCount ?? 0) > 0)}
+        />
+      }
       main={
         <>
           {activeTab === 'general' ? (
@@ -387,26 +307,27 @@ export function AuthoringTestEditorPage() {
           ) : null}
 
           {activeTab === 'review' ? (
-            <section className="editor-review">
-              <h2>Revisão editorial</h2>
-              <p>Valide os pontos críticos antes da publicação.</p>
-              <ul>
-                {validation.errors.map((error) => (
-                  <li key={error}>{error}</li>
-                ))}
-              </ul>
-              {validation.errors.length === 0 ? <p>Tudo pronto para publicar.</p> : null}
-            </section>
+            editorialValidation ? <EditorialConsistencyPanel validation={editorialValidation} /> : null
           ) : null}
         </>
       }
       sidebar={
         <EditorSidebar
           status={draft.status}
-          sectionCount={draft.sections.length}
-          questionCount={questionCount}
-          errors={validation.errors}
-          warnings={validation.warnings}
+          validation={
+            editorialValidation ?? {
+              isPublishable: false,
+              blockingErrors: [],
+              warnings: [],
+              summary: {
+                blockingErrorCount: 0,
+                warningCount: 0,
+                sectionCount: draft.sections.length,
+                questionCount,
+                validQuestionCount: 0,
+              },
+            }
+          }
           onPublish={() => {
             if (!canPublish) {
               return;
