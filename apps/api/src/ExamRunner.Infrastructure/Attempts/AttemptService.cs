@@ -17,10 +17,20 @@ public sealed class AttemptService(
     public async Task<IReadOnlyList<AttemptHistoryItemSnapshot>> GetHistoryAsync(CancellationToken cancellationToken = default)
     {
         var attempts = await dbContext.Attempts
-            .Include(x => x.Exam)
-            .Include(x => x.Result)
             .Where(x => x.Status != AttemptStatuses.InProgress)
             .AsNoTracking()
+            .Select(attempt => new
+            {
+                attempt.Id,
+                attempt.ExamId,
+                ExamTitle = attempt.Exam.Title,
+                attempt.StartedAtUtc,
+                attempt.LastSeenAtUtc,
+                attempt.SubmittedAtUtc,
+                attempt.Status,
+                CorrectAnswers = attempt.Result != null ? attempt.Result.CorrectAnswers : (int?)null,
+                ScorePercentage = attempt.Result != null ? attempt.Result.ScorePercentage : (decimal?)null
+            })
             .ToListAsync(cancellationToken);
 
         return attempts
@@ -34,10 +44,10 @@ public sealed class AttemptService(
                 return new AttemptHistoryItemSnapshot(
                     attempt.Id,
                     attempt.ExamId,
-                    attempt.Exam.Title,
+                    attempt.ExamTitle,
                     attempt.SubmittedAtUtc ?? attempt.StartedAtUtc,
-                    attempt.Result?.CorrectAnswers,
-                    attempt.Result?.ScorePercentage,
+                    attempt.CorrectAnswers,
+                    attempt.ScorePercentage,
                     timeSpentSeconds,
                     attempt.Status);
             })
