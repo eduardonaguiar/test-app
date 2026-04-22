@@ -1,3 +1,5 @@
+using ExamRunner.Application.Attempts;
+
 namespace ExamRunner.Infrastructure.Attempts;
 
 public sealed class ObjectiveAttemptScoringService : IAttemptScoringService

@@ -1,4 +1,4 @@
-namespace ExamRunner.Infrastructure.Attempts;
+namespace ExamRunner.Domain.Attempts;
 
 public static class AttemptStatuses
 {

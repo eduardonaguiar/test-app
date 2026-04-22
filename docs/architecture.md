@@ -38,6 +38,8 @@ Também existem artefatos de contrato em:
     api/
       src/
         ExamRunner.Api/
+        ExamRunner.Application/
+        ExamRunner.Domain/
         ExamRunner.Infrastructure/
       tests/
         ExamRunner.UnitTests/
@@ -55,9 +57,9 @@ Também existem artefatos de contrato em:
 
 ### Observação importante sobre camadas
 
-A direção arquitetural alvo inclui `Application` e `Domain`, mas **no estado atual do código** a lógica de negócio do backend está centralizada em `ExamRunner.Infrastructure` (serviços, regras de tentativa, scoring e importação), com a API atuando como camada HTTP.
+A direção arquitetural alvo inclui `Application` e `Domain`. No estado atual, a extração foi iniciada de forma incremental: contratos e orquestração de casos de uso de tentativas já vivem em `ExamRunner.Application`, enquanto regras centrais de ciclo de vida (timeout e reconexão) foram movidas para `ExamRunner.Domain`.
 
-Isso é um trade-off consciente para o MVP: reduz custo inicial e acelera entrega, mantendo a separação mínima entre transporte HTTP (`Api`) e regras/persistência (`Infrastructure`).
+A importação e parte das regras de negócio ainda permanecem em `ExamRunner.Infrastructure`, como etapa intermediária planejada para manter o sistema estável durante a migração por fatias.
 
 ---
 
@@ -87,14 +89,28 @@ Endpoints implementados:
 - `GET /api/attempts/{attemptId}/result`
 - `GET /api/history`
 
-## 4.2 `ExamRunner.Infrastructure`
+## 4.2 `ExamRunner.Application`
+
+Responsável por:
+
+- contratos de casos de uso de tentativas (commands, snapshots e interfaces);
+- fronteira estável para consumo pela camada `Api`.
+
+## 4.3 `ExamRunner.Domain`
+
+Responsável por:
+
+- regras puras de ciclo de vida da tentativa (deadline e reconexão);
+- status canônicos da tentativa.
+
+## 4.4 `ExamRunner.Infrastructure`
 
 Responsável por:
 
 - contexto EF Core e mapeamento de entidades SQLite;
 - migrations e inicialização de banco;
 - importação de exame (schema + consistência + persistência);
-- serviço de tentativas (timer, respostas, reconnect, submit);
+- implementação concreta dos serviços de aplicação;
 - cálculo de score objetivo e breakdown por tópico;
 - leitura de exames para listagem/detalhes.
 
@@ -162,9 +178,9 @@ A integração com backend usa contratos gerados a partir de OpenAPI (`apps/web/
 
 ## 9) Trade-offs e débitos técnicos conscientes
 
-1. **Ausência de `Application` e `Domain` separados no backend**
-   - Prós: menor overhead, entrega rápida no MVP.
-   - Contras: maior acoplamento entre regras e infraestrutura técnica.
+1. **Migração parcial para `Application` e `Domain`**
+   - Prós: menor acoplamento nos fluxos de tentativa já migrados.
+   - Contras: importação e outros fluxos ainda concentrados em `Infrastructure`.
 
 2. **Sem FluentValidation no backend (ainda)**
    - O projeto usa validações explícitas e exceções de domínio técnico.
@@ -207,7 +223,7 @@ Fora do MVP atual:
 
 ## 11) Próximos passos arquiteturais sugeridos
 
-1. Introduzir `ExamRunner.Application` e `ExamRunner.Domain` sem quebrar contratos HTTP.
+1. Continuar extraindo gradualmente importação e consultas para `ExamRunner.Application` e regras puras para `ExamRunner.Domain`.
 2. Adotar FluentValidation para requests/commands críticos.
 3. Adicionar testes de integração com `WebApplicationFactory`.
 4. Incluir Vitest para fluxos críticos do frontend.

@@ -1,6 +1,6 @@
 using ExamRunner.Api.Contracts.Attempts;
 using ExamRunner.Api.Contracts.Errors;
-using ExamRunner.Infrastructure.Attempts;
+using ExamRunner.Application.Attempts;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 

@@ -19,6 +19,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../../src/ExamRunner.Application/ExamRunner.Application.csproj" />
+    <ProjectReference Include="../../src/ExamRunner.Domain/ExamRunner.Domain.csproj" />
     <ProjectReference Include="../../src/ExamRunner.Infrastructure/ExamRunner.Infrastructure.csproj" />
   </ItemGroup>
 </Project>

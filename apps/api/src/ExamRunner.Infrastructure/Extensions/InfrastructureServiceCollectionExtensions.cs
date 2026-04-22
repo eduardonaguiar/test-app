@@ -1,3 +1,4 @@
+using ExamRunner.Application.Attempts;
 using ExamRunner.Infrastructure.Attempts;
 using ExamRunner.Infrastructure.Authoring;
 using ExamRunner.Infrastructure.Data;
