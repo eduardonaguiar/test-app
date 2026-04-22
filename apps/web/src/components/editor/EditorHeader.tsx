@@ -6,6 +6,7 @@ type EditorHeaderProps = {
   title: string;
   status: 'draft' | 'published';
   saveState: 'saved' | 'saving' | 'error';
+  warningCount: number;
   onPublish: () => void;
   publishDisabled: boolean;
 };
@@ -26,7 +27,7 @@ function getSaveLabel(saveState: EditorHeaderProps['saveState']) {
   return 'Salvo';
 }
 
-export function EditorHeader({ title, status, saveState, onPublish, publishDisabled }: EditorHeaderProps) {
+export function EditorHeader({ title, status, saveState, warningCount, onPublish, publishDisabled }: EditorHeaderProps) {
   return (
     <header className="editor-header">
       <div className="editor-header__content">
@@ -44,6 +45,9 @@ export function EditorHeader({ title, status, saveState, onPublish, publishDisab
         </div>
 
         <div className="editor-header__actions">
+          {warningCount > 0 && !publishDisabled ? (
+            <span className="editor-header__warning-hint">Publicável com {warningCount} aviso(s).</span>
+          ) : null}
           <Button variant="outline">Preview</Button>
           <Button onClick={onPublish} disabled={publishDisabled}>
             Publicar

@@ -1734,7 +1734,14 @@ h1 {
 
 .editor-header__actions {
   display: flex;
+  align-items: center;
   gap: 0.625rem;
+}
+
+.editor-header__warning-hint {
+  font-size: 0.82rem;
+  color: var(--warning);
+  font-weight: 600;
 }
 
 .editor-shell__body {
@@ -1846,6 +1853,99 @@ h1 {
 
 .editor-review h2 {
   margin: 0;
+}
+
+.editor-consistency-panel {
+  display: grid;
+  gap: 1rem;
+}
+
+.editor-consistency-panel__header {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 0.9rem 1rem;
+  background: var(--surface-muted);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.editor-consistency-panel__header h2 {
+  margin: 0;
+}
+
+.editor-consistency-panel__header p {
+  margin: 0.3rem 0 0;
+  color: var(--muted-foreground);
+}
+
+.editor-consistency-panel__summary-grid {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.editor-consistency-panel__summary-grid > div {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.7rem 0.75rem;
+  background: var(--surface);
+}
+
+.editor-consistency-panel__summary-grid dt {
+  font-size: 0.82rem;
+  color: var(--muted-foreground);
+}
+
+.editor-consistency-panel__summary-grid dd {
+  margin: 0.25rem 0 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.editor-consistency-panel__issues {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 0.9rem 1rem;
+}
+
+.editor-consistency-panel__issues h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.editor-consistency-panel__issues--blocking {
+  border-color: color-mix(in srgb, var(--destructive) 40%, var(--border));
+  background: color-mix(in srgb, var(--destructive) 6%, var(--surface) 94%);
+}
+
+.editor-consistency-panel__issues--warning {
+  border-color: color-mix(in srgb, var(--warning) 45%, var(--border));
+  background: color-mix(in srgb, var(--warning) 8%, var(--surface) 92%);
+}
+
+.editor-consistency-panel__issue-list {
+  margin: 0.65rem 0 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.editor-consistency-panel__empty {
+  margin: 0.65rem 0 0;
+  color: var(--muted-foreground);
+}
+
+.editor-consistency-panel__all-good {
+  margin: 0;
+  border: 1px solid color-mix(in srgb, var(--success) 40%, var(--border));
+  border-radius: var(--radius-md);
+  padding: 0.75rem;
+  background: color-mix(in srgb, var(--success) 8%, var(--surface) 92%);
+  color: #14532d;
+  font-weight: 600;
 }
 
 .sections-editor {
@@ -2177,6 +2277,10 @@ h1 {
 
   .editor-form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .editor-consistency-panel__summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .sections-editor__card-header,
