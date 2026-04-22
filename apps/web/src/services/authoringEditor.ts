@@ -1,11 +1,16 @@
 export type EditorExamQuestion = {
   questionId: string;
   prompt: string;
+  topic?: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
+  weight: number;
   options: Array<{
     optionId: string;
     text: string;
   }>;
-  correctOptionId?: string;
+  correctOptionId: string;
+  explanationSummary: string;
+  explanationDetailed: string;
 };
 
 export type EditorExamSection = {
@@ -52,10 +57,16 @@ type ExamDetailApiResponse = {
     questions: Array<{
       questionId: string;
       prompt: string;
+      topic?: string;
+      difficulty?: 'easy' | 'medium' | 'hard';
+      weight?: number;
       options: Array<{
         optionId: string;
         text: string;
       }>;
+      correctOptionId?: string;
+      explanationSummary?: string;
+      explanationDetailed?: string;
     }>;
   }>;
 };
@@ -112,6 +123,12 @@ export async function getEditorExam(examId: string, signal?: AbortSignal): Promi
         questionId: question.questionId,
         prompt: question.prompt,
         options: question.options,
+        topic: question.topic?.trim() || undefined,
+        difficulty: question.difficulty,
+        weight: question.weight ?? 1,
+        correctOptionId: question.correctOptionId ?? question.options[0]?.optionId ?? '',
+        explanationSummary: question.explanationSummary ?? '',
+        explanationDetailed: question.explanationDetailed ?? '',
       })),
     })),
   };
@@ -130,6 +147,24 @@ export async function saveEditorExam(draft: EditorExamDraft, signal?: AbortSigna
   if (!response.ok) {
     throw new Error(`PUT /api/exams/${draft.examId} failed with status ${response.status}`);
   }
+}
+
+export function createEmptyEditorQuestion(): EditorExamQuestion {
+  const firstOptionId = crypto.randomUUID();
+  return {
+    questionId: crypto.randomUUID(),
+    prompt: '',
+    topic: '',
+    difficulty: 'medium',
+    weight: 1,
+    options: [
+      { optionId: firstOptionId, text: '' },
+      { optionId: crypto.randomUUID(), text: '' },
+    ],
+    correctOptionId: firstOptionId,
+    explanationSummary: '',
+    explanationDetailed: '',
+  };
 }
 
 export function createEmptyEditorExam(): EditorExamDraft {
@@ -152,16 +187,7 @@ export function createEmptyEditorExam(): EditorExamDraft {
         title: 'Seção 1',
         description: 'Bloco inicial da prova.',
         displayOrder: 1,
-        questions: [
-          {
-            questionId: crypto.randomUUID(),
-            prompt: '',
-            options: [
-              { optionId: crypto.randomUUID(), text: '' },
-              { optionId: crypto.randomUUID(), text: '' },
-            ],
-          },
-        ],
+        questions: [createEmptyEditorQuestion()],
       },
     ],
   };

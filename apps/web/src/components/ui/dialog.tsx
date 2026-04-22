@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { createContext, forwardRef, useContext, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { ButtonHTMLAttributes, HTMLAttributes, KeyboardEvent, MutableRefObject, ReactNode } from 'react';
 import { cn } from '../../lib/cn';
 
@@ -138,7 +138,10 @@ export function DialogDescription({ className, ...props }: HTMLAttributes<HTMLPa
   return <p id={descriptionId} className={cn('ui-dialog__description', className)} {...props} />;
 }
 
-export function DialogClose({ className, ...props }: ButtonHTMLAttributes<HTMLButtonElement>) {
+export const DialogClose = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLButtonElement>>(function DialogClose(
+  { className, ...props },
+  ref,
+) {
   const { setOpen } = useDialogContext();
-  return <button className={cn(className)} onClick={() => setOpen(false)} {...props} />;
-}
+  return <button ref={ref} className={cn(className)} onClick={() => setOpen(false)} {...props} />;
+});
