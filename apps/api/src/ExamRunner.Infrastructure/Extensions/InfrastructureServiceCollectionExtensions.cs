@@ -1,4 +1,5 @@
 using ExamRunner.Infrastructure.Attempts;
+using ExamRunner.Infrastructure.Authoring;
 using ExamRunner.Infrastructure.Data;
 using ExamRunner.Infrastructure.Import;
 using ExamRunner.Infrastructure.Repositories;
@@ -25,6 +26,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton(TimeProvider.System);
 
         services.AddScoped<IExamReadRepository, ExamReadRepository>();
+        services.AddScoped<IExamPublicationService, ExamPublicationService>();
         services.AddScoped<IAttemptScoringService, ObjectiveAttemptScoringService>();
         services.AddScoped<IAttemptService, AttemptService>();
 

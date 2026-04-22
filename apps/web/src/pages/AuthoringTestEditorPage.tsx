@@ -15,6 +15,7 @@ import { useToast } from '../hooks/useToast';
 import {
   createEmptyEditorExam,
   getEditorExam,
+  publishEditorExam,
   saveEditorExam,
   type EditorExamDraft,
 } from '../services/authoringEditor';
@@ -48,6 +49,7 @@ export function AuthoringTestEditorPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SaveState>('saved');
+  const [isPublishing, setIsPublishing] = useState(false);
   const saveTimerRef = useRef<number | null>(null);
   const hasDraftInitializedRef = useRef(false);
 
@@ -149,6 +151,47 @@ export function AuthoringTestEditorPage() {
 
   const questionCount = countQuestions(draft);
   const canPublish = editorialValidation?.isPublishable ?? false;
+  const isAlreadyPublished = draft.status === 'published';
+  const publishDisabled = !canPublish || isAlreadyPublished || isPublishing || draft.examId === 'new';
+  const publishBlockedReason = draft.examId === 'new'
+    ? 'Salve e importe a prova para publicar.'
+    : !canPublish
+      ? 'Corrija os erros impeditivos para publicar.'
+      : undefined;
+
+  async function handleConfirmPublish() {
+    const currentDraft = draft;
+    if (publishDisabled || !currentDraft) {
+      return;
+    }
+
+    setIsPublishing(true);
+
+    try {
+      const result = await publishEditorExam(currentDraft.examId);
+      setDraft((current) =>
+        current
+          ? {
+              ...current,
+              status: result.status,
+            }
+          : current,
+      );
+
+      toast.success({
+        title: 'Prova publicada com sucesso',
+        description: 'A prova agora aparece no catálogo de simulados disponíveis para realização.',
+      });
+    } catch (error) {
+      const description = error instanceof Error ? error.message : 'Não foi possível publicar a prova no momento.';
+      toast.error({
+        title: 'Falha ao publicar prova',
+        description,
+      });
+    } finally {
+      setIsPublishing(false);
+    }
+  }
 
   return (
     <EditorShell
@@ -158,15 +201,13 @@ export function AuthoringTestEditorPage() {
           status={draft.status}
           saveState={saveState}
           warningCount={editorialValidation?.summary.warningCount ?? 0}
-          onPublish={() => {
-            if (!canPublish) {
-              return;
-            }
-
-            setDraft((current) => (current ? { ...current, status: 'published' } : current));
-            toast.success({ title: 'Teste publicado', description: 'A prova foi marcada como publicada no ambiente de autoria.' });
-          }}
-          publishDisabled={!canPublish}
+          sectionCount={editorialValidation?.summary.sectionCount ?? 0}
+          questionCount={editorialValidation?.summary.questionCount ?? 0}
+          blockingErrorCount={editorialValidation?.summary.blockingErrorCount ?? 0}
+          onPublish={handleConfirmPublish}
+          publishDisabled={publishDisabled}
+          publishBlockedReason={publishBlockedReason}
+          isPublished={isAlreadyPublished}
         />
       }
       tabs={
@@ -329,13 +370,10 @@ export function AuthoringTestEditorPage() {
             }
           }
           onPublish={() => {
-            if (!canPublish) {
-              return;
-            }
-
-            setDraft((current) => (current ? { ...current, status: 'published' } : current));
+            void handleConfirmPublish();
           }}
-          publishDisabled={!canPublish}
+          publishDisabled={publishDisabled}
+          publishBlockedReason={publishBlockedReason}
         />
       }
     />

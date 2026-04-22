@@ -142,6 +142,13 @@ partial class ExamRunnerDbContextModelSnapshot : ModelSnapshot
             b.Property<int>("DurationMinutes")
                 .HasColumnType("INTEGER");
 
+            b.Property<string>("EditorialStatus")
+                .IsRequired()
+                .ValueGeneratedOnAdd()
+                .HasMaxLength(32)
+                .HasColumnType("TEXT")
+                .HasDefaultValue("draft");
+
             b.Property<int>("MaxReconnectAttempts")
                 .ValueGeneratedOnAdd()
                 .HasColumnType("INTEGER")
@@ -149,6 +156,9 @@ partial class ExamRunnerDbContextModelSnapshot : ModelSnapshot
 
             b.Property<int>("PassingScorePercentage")
                 .HasColumnType("INTEGER");
+
+            b.Property<DateTimeOffset?>("PublishedAtUtc")
+                .HasColumnType("TEXT");
 
             b.Property<bool>("ReconnectEnabled")
                 .ValueGeneratedOnAdd()

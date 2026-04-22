@@ -41,6 +41,7 @@ type ExamDetailApiResponse = {
   examId: string;
   title: string;
   description: string;
+  status?: 'draft' | 'published';
   durationMinutes: number;
   passingScorePercentage: number;
   reconnectPolicy?: {
@@ -80,37 +81,20 @@ function normalizeReconnectPolicy(policy: ExamDetailApiResponse['reconnectPolicy
   };
 }
 
-type AuthoringListApiResponse = {
-  items: Array<{
-    examId: string;
-    status: 'draft' | 'published';
-  }>;
-};
-
 export async function getEditorExam(examId: string, signal?: AbortSignal): Promise<EditorExamDraft> {
-  const [detailResponse, authoringResponse] = await Promise.all([
-    fetch(`/api/exams/${examId}`, { signal }),
-    fetch('/api/exams/authoring', { signal }),
-  ]);
+  const detailResponse = await fetch(`/api/exams/${examId}`, { signal });
 
   if (!detailResponse.ok) {
     throw new Error(`GET /api/exams/${examId} failed with status ${detailResponse.status}`);
   }
 
-  if (!authoringResponse.ok) {
-    throw new Error(`GET /api/exams/authoring failed with status ${authoringResponse.status}`);
-  }
-
   const detail = (await detailResponse.json()) as ExamDetailApiResponse;
-  const authoring = (await authoringResponse.json()) as AuthoringListApiResponse;
-
-  const status = authoring.items.find((item) => item.examId === examId)?.status ?? 'draft';
 
   return {
     examId: detail.examId,
     title: detail.title,
     description: detail.description,
-    status,
+    status: detail.status ?? 'draft',
     durationMinutes: detail.durationMinutes,
     passingScorePercentage: detail.passingScorePercentage,
     reconnectPolicy: normalizeReconnectPolicy(detail.reconnectPolicy),
@@ -147,6 +131,61 @@ export async function saveEditorExam(draft: EditorExamDraft, signal?: AbortSigna
   if (!response.ok) {
     throw new Error(`PUT /api/exams/${draft.examId} failed with status ${response.status}`);
   }
+}
+
+type PublishApiIssue = {
+  code: string;
+  severity: 'blocking' | 'warning';
+  scope: 'exam' | 'section' | 'question';
+  message: string;
+  path?: string;
+  entityId?: string;
+};
+
+type PublishExamApiResponse = {
+  examId: string;
+  status: 'draft' | 'published';
+  publishedAt: string;
+  validation: {
+    isPublishable: boolean;
+    summary: {
+      blockingErrorCount: number;
+      warningCount: number;
+      sectionCount: number;
+      questionCount: number;
+      validQuestionCount: number;
+    };
+    blockingErrors: PublishApiIssue[];
+    warnings: PublishApiIssue[];
+  };
+};
+
+export type PublishExamResult = {
+  examId: string;
+  status: 'draft' | 'published';
+  publishedAt: string;
+  validation: PublishExamApiResponse['validation'];
+};
+
+export async function publishEditorExam(examId: string, signal?: AbortSignal): Promise<PublishExamResult> {
+  const response = await fetch(`/api/authoring/exams/${examId}/publish`, {
+    method: 'POST',
+    signal,
+  });
+
+  if (!response.ok) {
+    const problem = (await response.json().catch(() => null)) as { detail?: string } | null;
+    throw new Error(problem?.detail ?? `POST /api/authoring/exams/${examId}/publish failed with status ${response.status}`);
+  }
+
+  const payload = (await response.json()) as PublishExamApiResponse;
+
+  return {
+    examId: payload.examId,
+    status: payload.status,
+    publishedAt: payload.publishedAt,
+    validation: payload.validation,
+  };
 }
 
 export function createEmptyEditorQuestion(): EditorExamQuestion {

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using ExamRunner.Api.Contracts.Errors;
 using ExamRunner.Api.Contracts.Exams;
+using ExamRunner.Infrastructure.Authoring;
 using ExamRunner.Infrastructure.Import;
 using ExamRunner.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -41,6 +42,15 @@ public static class ExamEndpoints
             .WithSummary("Retorna detalhes de um exame")
             .Produces<ExamDetailResponse>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
+
+        app.MapPost("/authoring/exams/{examId:guid}/publish", PublishExam)
+            .WithName("PublishExam")
+            .WithTags("Exams")
+            .WithSummary("Publica uma prova após revalidação editorial no backend")
+            .Produces<PublishExamResponse>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         return app;
@@ -149,6 +159,7 @@ public static class ExamEndpoints
             ExamId: exam.Id,
             Title: exam.Title,
             Description: exam.Description,
+            Status: exam.EditorialStatus,
             DurationMinutes: exam.DurationMinutes,
             PassingScorePercentage: exam.PassingScorePercentage,
             SchemaVersion: exam.SchemaVersion,
@@ -186,4 +197,68 @@ public static class ExamEndpoints
 
         return TypedResults.Ok(response);
     }
+
+    private static async Task<Results<Ok<PublishExamResponse>, NotFound<ProblemDetails>, Conflict<ProblemDetails>>> PublishExam(
+        Guid examId,
+        IExamPublicationService publicationService,
+        CancellationToken cancellationToken)
+    {
+        var (result, failure) = await publicationService.PublishAsync(examId, cancellationToken);
+
+        if (failure is not null)
+        {
+            if (failure.Code == "EXAM_NOT_FOUND")
+            {
+                var notFoundProblem = new ProblemDetails
+                {
+                    Title = "Exam not found",
+                    Detail = failure.Message,
+                    Status = StatusCodes.Status404NotFound,
+                    Type = $"https://httpstatuses.com/{StatusCodes.Status404NotFound}"
+                };
+                notFoundProblem.Extensions["code"] = ApiErrorCodes.NotFound;
+
+                return TypedResults.NotFound(notFoundProblem);
+            }
+
+            var conflictProblem = new ProblemDetails
+            {
+                Title = "Exam cannot be published",
+                Detail = failure.Message,
+                Status = StatusCodes.Status409Conflict,
+                Type = $"https://httpstatuses.com/{StatusCodes.Status409Conflict}"
+            };
+            conflictProblem.Extensions["code"] = failure.Code;
+            conflictProblem.Extensions["errors"] = failure.Validation.BlockingErrors
+                .Select(issue => new { path = issue.Path, message = issue.Message, severity = issue.Severity, code = issue.Code })
+                .ToArray();
+            conflictProblem.Extensions["warningCount"] = failure.Validation.Summary.WarningCount;
+
+            return TypedResults.Conflict(conflictProblem);
+        }
+
+        var response = new PublishExamResponse(
+            ExamId: result!.ExamId,
+            Status: result.Status,
+            PublishedAt: result.PublishedAtUtc,
+            Validation: MapValidation(result.Validation));
+
+        return TypedResults.Ok(response);
+    }
+
+    private static EditorialValidationResultResponse MapValidation(EditorialValidationResult validation) =>
+        new(
+            IsPublishable: validation.IsPublishable,
+            BlockingErrors: validation.BlockingErrors
+                .Select(issue => new EditorialValidationIssueResponse(issue.Code, issue.Severity, issue.Scope, issue.Message, issue.Path, issue.EntityId))
+                .ToArray(),
+            Warnings: validation.Warnings
+                .Select(issue => new EditorialValidationIssueResponse(issue.Code, issue.Severity, issue.Scope, issue.Message, issue.Path, issue.EntityId))
+                .ToArray(),
+            Summary: new EditorialValidationSummaryResponse(
+                validation.Summary.BlockingErrorCount,
+                validation.Summary.WarningCount,
+                validation.Summary.SectionCount,
+                validation.Summary.QuestionCount,
+                validation.Summary.ValidQuestionCount));
 }
