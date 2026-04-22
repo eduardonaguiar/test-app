@@ -25,6 +25,9 @@ type EditorHeaderProps = {
   blockingErrorCount?: number;
   onPublish: () => void;
   onPreview: () => void;
+  onExportJson: () => void;
+  exportJsonDisabled?: boolean;
+  exportJsonBlockedReason?: string;
   publishDisabled: boolean;
   publishBlockedReason?: string;
   isPublished?: boolean;
@@ -66,6 +69,9 @@ export function EditorHeader({
   blockingErrorCount = 0,
   onPublish,
   onPreview,
+  onExportJson,
+  exportJsonDisabled = false,
+  exportJsonBlockedReason,
   publishDisabled,
   publishBlockedReason,
   isPublished = false,
@@ -99,6 +105,14 @@ export function EditorHeader({
             <span className="editor-header__warning-hint">Publicável com {warningCount} aviso(s).</span>
           ) : null}
           <Button variant="outline" onClick={onPreview}>Preview</Button>
+          <Button
+            variant="outline"
+            onClick={onExportJson}
+            disabled={exportJsonDisabled}
+            title={exportJsonDisabled ? exportJsonBlockedReason : 'Gera um arquivo JSON compatível para reimportação.'}
+          >
+            Exportar JSON
+          </Button>
           <DialogRoot>
             <DialogTrigger className="ui-button ui-button--default ui-button--default-size" disabled={publishDisabled} title={publishBlockedReason}>
               {isPublished ? 'Publicado' : 'Publicar'}

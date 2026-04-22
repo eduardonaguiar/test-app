@@ -20,6 +20,11 @@ import {
   type EditorExamDraft,
 } from '../services/authoringEditor';
 import { validateExamEditorialState } from '../services/editorialValidation';
+import {
+  ExamExportCompatibilityError,
+  exportExamToJsonFile,
+  validateExamExportCompatibility,
+} from '../services/examJsonExport';
 
 function countQuestions(draft: EditorExamDraft): number {
   return draft.sections.reduce((total, section) => total + section.questions.length, 0);
@@ -103,6 +108,10 @@ export function AuthoringTestEditorPage() {
 
   const generalValidation = useMemo(() => (draft ? validateGeneralMetadata(draft) : null), [draft]);
   const editorialValidation = useMemo(() => (draft ? validateExamEditorialState(draft) : null), [draft]);
+  const exportCompatibility = useMemo(
+    () => (draft && editorialValidation ? validateExamExportCompatibility(draft, editorialValidation) : null),
+    [draft, editorialValidation],
+  );
 
   if (isLoading) {
     return <PageLoading title="Abrindo editor" description="Carregando estrutura da prova para edição." />;
@@ -118,9 +127,11 @@ export function AuthoringTestEditorPage() {
   const publishDisabled = !canPublish || isAlreadyPublished || isPublishing || draft.examId === 'new';
   const publishBlockedReason = draft.examId === 'new'
     ? 'Salve e importe a prova para publicar.'
-    : !canPublish
+      : !canPublish
       ? 'Corrija os erros impeditivos para publicar.'
       : undefined;
+  const exportJsonDisabled = !(exportCompatibility?.isCompatible ?? false);
+  const exportJsonBlockedReason = exportCompatibility?.reasons[0] ?? 'Corrija os erros impeditivos para exportar JSON compatível.';
 
   async function handleConfirmPublish() {
     const currentDraft = draft;
@@ -164,6 +175,33 @@ export function AuthoringTestEditorPage() {
     });
   }
 
+  function handleExportJson() {
+    if (!editorialValidation) {
+      return;
+    }
+
+    try {
+      const fileName = exportExamToJsonFile(draft, editorialValidation);
+      toast.success({
+        title: 'JSON exportado com sucesso',
+        description: `Arquivo ${fileName} gerado com o schema oficial atual.`,
+      });
+    } catch (error) {
+      if (error instanceof ExamExportCompatibilityError) {
+        toast.error({
+          title: 'Não foi possível exportar a prova',
+          description: error.reasons[0] ?? 'Ainda existem erros impeditivos de compatibilidade no editor.',
+        });
+        return;
+      }
+
+      toast.error({
+        title: 'Falha ao gerar arquivo',
+        description: 'Tente novamente após revisar os dados da prova.',
+      });
+    }
+  }
+
   return (
     <EditorShell
       header={
@@ -178,6 +216,9 @@ export function AuthoringTestEditorPage() {
           questionCount={editorialValidation?.summary.questionCount ?? 0}
           blockingErrorCount={editorialValidation?.summary.blockingErrorCount ?? 0}
           onPreview={handlePreview}
+          onExportJson={handleExportJson}
+          exportJsonDisabled={exportJsonDisabled}
+          exportJsonBlockedReason={exportJsonBlockedReason}
           onPublish={handleConfirmPublish}
           publishDisabled={publishDisabled}
           publishBlockedReason={publishBlockedReason}
