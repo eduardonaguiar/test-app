@@ -4,6 +4,8 @@ import { EditorHeader } from '../components/editor/EditorHeader';
 import { EditorShell } from '../components/editor/EditorShell';
 import { EditorSidebar } from '../components/editor/EditorSidebar';
 import { EditorTabs, type EditorTabKey } from '../components/editor/EditorTabs';
+import { TestGeneralForm } from '../components/editor/TestGeneralForm';
+import { validateGeneralMetadata } from '../components/editor/generalMetadataValidation';
 import { InlineError } from '../components/feedback/InlineError';
 import { PageLoading } from '../components/feedback/PageLoading';
 import { Input } from '../components/ui/input';
@@ -17,13 +19,12 @@ function countQuestions(draft: EditorExamDraft): number {
   return draft.sections.reduce((total, section) => total + section.questions.length, 0);
 }
 
-function buildValidation(draft: EditorExamDraft): { errors: string[]; warnings: string[] } {
-  const errors: string[] = [];
-  const warnings: string[] = [];
-
-  if (!draft.title.trim()) {
-    errors.push('O teste precisa de um título.');
-  }
+function buildValidation(
+  draft: EditorExamDraft,
+  metadataValidation: ReturnType<typeof validateGeneralMetadata>,
+): { errors: string[]; warnings: string[] } {
+  const errors = [...metadataValidation.errors];
+  const warnings = [...metadataValidation.warnings];
 
   if (draft.sections.length === 0) {
     errors.push('Adicione ao menos uma seção.');
@@ -62,14 +63,6 @@ function buildValidation(draft: EditorExamDraft): { errors: string[]; warnings: 
     errors.push(`${questionsWithoutOptions} questão(ões) com menos de 2 alternativas válidas.`);
   }
 
-  if (draft.durationMinutes < 10) {
-    warnings.push('Duração menor que 10 minutos pode ser curta para revisão.');
-  }
-
-  if (draft.passingScorePercentage < 50) {
-    warnings.push('Pontuação de aprovação abaixo de 50% é incomum.');
-  }
-
   return { errors, warnings };
 }
 
@@ -97,11 +90,13 @@ export function AuthoringTestEditorPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SaveState>('saved');
   const saveTimerRef = useRef<number | null>(null);
+  const hasDraftInitializedRef = useRef(false);
 
   useEffect(() => {
     const controller = new AbortController();
     setIsLoading(true);
     setErrorMessage(null);
+    hasDraftInitializedRef.current = false;
 
     async function loadDraft() {
       if (!examId || examId === 'new') {
@@ -141,9 +136,16 @@ export function AuthoringTestEditorPage() {
       return;
     }
 
+    if (!hasDraftInitializedRef.current) {
+      hasDraftInitializedRef.current = true;
+      return;
+    }
+
     if (saveTimerRef.current) {
       window.clearTimeout(saveTimerRef.current);
     }
+
+    setSaveState('saving');
 
     saveTimerRef.current = window.setTimeout(async () => {
       const key = getStorageKey(draft.examId || 'new');
@@ -175,7 +177,11 @@ export function AuthoringTestEditorPage() {
     };
   }, [draft, examId, toast]);
 
-  const validation = useMemo(() => (draft ? buildValidation(draft) : { errors: [], warnings: [] }), [draft]);
+  const generalValidation = useMemo(() => (draft ? validateGeneralMetadata(draft) : null), [draft]);
+  const validation = useMemo(
+    () => (draft && generalValidation ? buildValidation(draft, generalValidation) : { errors: [], warnings: [] }),
+    [draft, generalValidation],
+  );
 
   if (isLoading) {
     return <PageLoading title="Abrindo editor" description="Carregando estrutura da prova para edição." />;
@@ -210,37 +216,11 @@ export function AuthoringTestEditorPage() {
       main={
         <>
           {activeTab === 'general' ? (
-            <section className="editor-form-section">
-              <label className="stack-xs">
-                <span>Título do teste</span>
-                <Input value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} />
-              </label>
-              <label className="stack-xs">
-                <span>Descrição</span>
-                <Textarea value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} rows={6} />
-              </label>
-              <div className="editor-form-grid">
-                <label className="stack-xs">
-                  <span>Duração (minutos)</span>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={draft.durationMinutes}
-                    onChange={(event) => setDraft({ ...draft, durationMinutes: Number(event.target.value) || 0 })}
-                  />
-                </label>
-                <label className="stack-xs">
-                  <span>Nota de corte (%)</span>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={draft.passingScorePercentage}
-                    onChange={(event) => setDraft({ ...draft, passingScorePercentage: Number(event.target.value) || 0 })}
-                  />
-                </label>
-              </div>
-            </section>
+            <TestGeneralForm
+              draft={draft}
+              fieldErrors={generalValidation?.fieldErrors ?? {}}
+              onChange={(nextDraft) => setDraft(nextDraft)}
+            />
           ) : null}
 
           {activeTab === 'sections' ? (
