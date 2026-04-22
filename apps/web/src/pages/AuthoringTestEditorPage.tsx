@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { EditorialConsistencyPanel } from '../components/editor/EditorialConsistencyPanel';
 import { EditorHeader } from '../components/editor/EditorHeader';
@@ -12,16 +12,14 @@ import { validateGeneralMetadata } from '../components/editor/generalMetadataVal
 import { InlineError } from '../components/feedback/InlineError';
 import { PageLoading } from '../components/feedback/PageLoading';
 import { useToast } from '../hooks/useToast';
+import { useEditorAutosave } from '../hooks/useEditorAutosave';
 import {
   createEmptyEditorExam,
   getEditorExam,
   publishEditorExam,
-  saveEditorExam,
   type EditorExamDraft,
 } from '../services/authoringEditor';
 import { validateExamEditorialState } from '../services/editorialValidation';
-
-type SaveState = 'saved' | 'saving' | 'error';
 
 function countQuestions(draft: EditorExamDraft): number {
   return draft.sections.reduce((total, section) => total + section.questions.length, 0);
@@ -48,16 +46,26 @@ export function AuthoringTestEditorPage() {
   const [draft, setDraft] = useState<EditorExamDraft | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [saveState, setSaveState] = useState<SaveState>('saved');
   const [isPublishing, setIsPublishing] = useState(false);
-  const saveTimerRef = useRef<number | null>(null);
-  const hasDraftInitializedRef = useRef(false);
+  const handleAutosaveError = useCallback(() => {
+    toast.error({
+      title: 'Falha no autosave',
+      description: 'As mudanças permanecem no navegador e serão reenviadas no próximo autosave.',
+    });
+  }, [toast]);
+
+  const { saveStatus, lastSavedAt, errorMessage: autosaveErrorMessage } = useEditorAutosave({
+    examId,
+    draft,
+    debounceMs: 800,
+    structuralDebounceMs: 200,
+    onError: handleAutosaveError,
+  });
 
   useEffect(() => {
     const controller = new AbortController();
     setIsLoading(true);
     setErrorMessage(null);
-    hasDraftInitializedRef.current = false;
 
     async function loadDraft() {
       if (!examId || examId === 'new') {
@@ -91,52 +99,6 @@ export function AuthoringTestEditorPage() {
       controller.abort();
     };
   }, [examId]);
-
-  useEffect(() => {
-    if (!draft) {
-      return;
-    }
-
-    if (!hasDraftInitializedRef.current) {
-      hasDraftInitializedRef.current = true;
-      return;
-    }
-
-    if (saveTimerRef.current) {
-      window.clearTimeout(saveTimerRef.current);
-    }
-
-    setSaveState('saving');
-
-    saveTimerRef.current = window.setTimeout(async () => {
-      const key = getStorageKey(draft.examId || 'new');
-      localStorage.setItem(key, JSON.stringify(draft));
-
-      if (!examId || examId === 'new') {
-        setSaveState('saved');
-        return;
-      }
-
-      setSaveState('saving');
-
-      try {
-        await saveEditorExam(draft);
-        setSaveState('saved');
-      } catch {
-        setSaveState('error');
-        toast.error({
-          title: 'Falha no autosave',
-          description: 'As mudanças permanecem no navegador e serão reenviadas no próximo autosave.',
-        });
-      }
-    }, 600);
-
-    return () => {
-      if (saveTimerRef.current) {
-        window.clearTimeout(saveTimerRef.current);
-      }
-    };
-  }, [draft, examId, toast]);
 
   const generalValidation = useMemo(() => (draft ? validateGeneralMetadata(draft) : null), [draft]);
   const editorialValidation = useMemo(() => (draft ? validateExamEditorialState(draft) : null), [draft]);
@@ -199,7 +161,9 @@ export function AuthoringTestEditorPage() {
         <EditorHeader
           title={draft.title}
           status={draft.status}
-          saveState={saveState}
+          saveState={saveStatus}
+          lastSavedAt={lastSavedAt}
+          saveErrorMessage={autosaveErrorMessage}
           warningCount={editorialValidation?.summary.warningCount ?? 0}
           sectionCount={editorialValidation?.summary.sectionCount ?? 0}
           questionCount={editorialValidation?.summary.questionCount ?? 0}
