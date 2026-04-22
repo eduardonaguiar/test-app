@@ -4,11 +4,11 @@ import { EditorHeader } from '../components/editor/EditorHeader';
 import { EditorShell } from '../components/editor/EditorShell';
 import { EditorSidebar } from '../components/editor/EditorSidebar';
 import { EditorTabs, type EditorTabKey } from '../components/editor/EditorTabs';
+import { SectionsEditor } from '../components/editor/SectionsEditor';
 import { TestGeneralForm } from '../components/editor/TestGeneralForm';
 import { validateGeneralMetadata } from '../components/editor/generalMetadataValidation';
 import { InlineError } from '../components/feedback/InlineError';
 import { PageLoading } from '../components/feedback/PageLoading';
-import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { useToast } from '../hooks/useToast';
 import { createEmptyEditorExam, getEditorExam, saveEditorExam, type EditorExamDraft } from '../services/authoringEditor';
@@ -31,12 +31,17 @@ function buildValidation(
   }
 
   let untitledSections = 0;
+  let sectionsWithoutQuestions = 0;
   let questionsWithoutPrompt = 0;
   let questionsWithoutOptions = 0;
 
   draft.sections.forEach((section) => {
     if (!section.title.trim()) {
       untitledSections += 1;
+    }
+
+    if (section.questions.length === 0) {
+      sectionsWithoutQuestions += 1;
     }
 
     section.questions.forEach((question) => {
@@ -61,6 +66,10 @@ function buildValidation(
 
   if (questionsWithoutOptions > 0) {
     errors.push(`${questionsWithoutOptions} questão(ões) com menos de 2 alternativas válidas.`);
+  }
+
+  if (sectionsWithoutQuestions > 0) {
+    warnings.push(`${sectionsWithoutQuestions} seção(ões) ainda sem questões.`);
   }
 
   return { errors, warnings };
@@ -224,24 +233,63 @@ export function AuthoringTestEditorPage() {
           ) : null}
 
           {activeTab === 'sections' ? (
-            <section className="editor-form-section">
-              {draft.sections.map((section, index) => (
-                <label key={section.sectionId} className="stack-xs">
-                  <span>Seção {index + 1}</span>
-                  <Input
-                    value={section.title}
-                    onChange={(event) =>
-                      setDraft({
-                        ...draft,
-                        sections: draft.sections.map((currentSection) =>
-                          currentSection.sectionId === section.sectionId ? { ...currentSection, title: event.target.value } : currentSection,
-                        ),
-                      })
-                    }
-                  />
-                </label>
-              ))}
-            </section>
+            <SectionsEditor
+              sections={draft.sections}
+              onAddSection={(payload) =>
+                setDraft((current) => {
+                  if (!current) {
+                    return current;
+                  }
+
+                  const nextDisplayOrder =
+                    current.sections.reduce((maxOrder, section) => Math.max(maxOrder, section.displayOrder), 0) + 1;
+
+                  return {
+                    ...current,
+                    sections: [
+                      ...current.sections,
+                      {
+                        sectionId: crypto.randomUUID(),
+                        title: payload.title,
+                        description: payload.description,
+                        displayOrder: nextDisplayOrder,
+                        questions: [],
+                      },
+                    ],
+                  };
+                })
+              }
+              onUpdateSection={(sectionId, payload) =>
+                setDraft((current) => {
+                  if (!current) {
+                    return current;
+                  }
+
+                  return {
+                    ...current,
+                    sections: current.sections.map((section) =>
+                      section.sectionId === sectionId
+                        ? { ...section, title: payload.title, description: payload.description }
+                        : section,
+                    ),
+                  };
+                })
+              }
+              onRemoveSection={(sectionId) =>
+                setDraft((current) => {
+                  if (!current) {
+                    return current;
+                  }
+
+                  return {
+                    ...current,
+                    sections: current.sections
+                      .filter((section) => section.sectionId !== sectionId)
+                      .map((section, index) => ({ ...section, displayOrder: index + 1 })),
+                  };
+                })
+              }
+            />
           ) : null}
 
           {activeTab === 'questions' ? (

@@ -11,6 +11,7 @@ export type EditorExamQuestion = {
 export type EditorExamSection = {
   sectionId: string;
   title: string;
+  description?: string | null;
   displayOrder: number;
   questions: EditorExamQuestion[];
 };
@@ -46,6 +47,7 @@ type ExamDetailApiResponse = {
   sections: Array<{
     sectionId: string;
     title: string;
+    description?: string | null;
     displayOrder: number;
     questions: Array<{
       questionId: string;
@@ -104,6 +106,7 @@ export async function getEditorExam(examId: string, signal?: AbortSignal): Promi
     sections: detail.sections.map((section) => ({
       sectionId: section.sectionId,
       title: section.title,
+      description: section.description ?? null,
       displayOrder: section.displayOrder,
       questions: section.questions.map((question) => ({
         questionId: question.questionId,
@@ -147,6 +150,7 @@ export function createEmptyEditorExam(): EditorExamDraft {
       {
         sectionId: crypto.randomUUID(),
         title: 'Seção 1',
+        description: 'Bloco inicial da prova.',
         displayOrder: 1,
         questions: [
           {
