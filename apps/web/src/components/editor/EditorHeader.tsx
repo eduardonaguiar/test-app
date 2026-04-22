@@ -24,6 +24,7 @@ type EditorHeaderProps = {
   questionCount?: number;
   blockingErrorCount?: number;
   onPublish: () => void;
+  onPreview: () => void;
   publishDisabled: boolean;
   publishBlockedReason?: string;
   isPublished?: boolean;
@@ -64,6 +65,7 @@ export function EditorHeader({
   questionCount = 0,
   blockingErrorCount = 0,
   onPublish,
+  onPreview,
   publishDisabled,
   publishBlockedReason,
   isPublished = false,
@@ -96,7 +98,7 @@ export function EditorHeader({
           {warningCount > 0 && !publishDisabled ? (
             <span className="editor-header__warning-hint">Publicável com {warningCount} aviso(s).</span>
           ) : null}
-          <Button variant="outline">Preview</Button>
+          <Button variant="outline" onClick={onPreview}>Preview</Button>
           <DialogRoot>
             <DialogTrigger className="ui-button ui-button--default ui-button--default-size" disabled={publishDisabled} title={publishBlockedReason}>
               {isPublished ? 'Publicado' : 'Publicar'}
