@@ -672,6 +672,25 @@ h1 {
   gap: 1rem;
 }
 
+.preview-mode-banner {
+  margin: 0;
+  border: 1px solid #2563eb;
+  border-radius: var(--radius-md);
+  background: #eff6ff;
+  color: #1d4ed8;
+  padding: 0.625rem 0.875rem;
+  font-weight: 600;
+}
+
+.preview-warning {
+  margin: 0;
+  border: 1px solid #f59e0b;
+  border-radius: var(--radius-md);
+  background: #fffbeb;
+  color: #92400e;
+  padding: 0.625rem 0.875rem;
+}
+
 .exam-session__header {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);

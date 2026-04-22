@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { EditorialConsistencyPanel } from '../components/editor/EditorialConsistencyPanel';
 import { EditorHeader } from '../components/editor/EditorHeader';
 import { EditorShell } from '../components/editor/EditorShell';
@@ -41,6 +41,7 @@ function getStorageKey(examId: string) {
 
 export function AuthoringTestEditorPage() {
   const { examId } = useParams<{ examId: string }>();
+  const navigate = useNavigate();
   const toast = useToast();
   const [activeTab, setActiveTab] = useState<EditorTabKey>('general');
   const [draft, setDraft] = useState<EditorExamDraft | null>(null);
@@ -155,6 +156,14 @@ export function AuthoringTestEditorPage() {
     }
   }
 
+  function handlePreview() {
+    navigate(`/authoring/tests/${draft.examId}/preview`, {
+      state: {
+        draft,
+      },
+    });
+  }
+
   return (
     <EditorShell
       header={
@@ -168,6 +177,7 @@ export function AuthoringTestEditorPage() {
           sectionCount={editorialValidation?.summary.sectionCount ?? 0}
           questionCount={editorialValidation?.summary.questionCount ?? 0}
           blockingErrorCount={editorialValidation?.summary.blockingErrorCount ?? 0}
+          onPreview={handlePreview}
           onPublish={handleConfirmPublish}
           publishDisabled={publishDisabled}
           publishBlockedReason={publishBlockedReason}
