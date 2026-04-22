@@ -22,6 +22,12 @@ export type EditorExamDraft = {
   status: 'draft' | 'published';
   durationMinutes: number;
   passingScorePercentage: number;
+  reconnectPolicy: {
+    enabled: boolean;
+    maxReconnectAttempts: number;
+    gracePeriodSeconds: number;
+    terminateIfExceeded: boolean;
+  };
   sections: EditorExamSection[];
 };
 
@@ -31,6 +37,12 @@ type ExamDetailApiResponse = {
   description: string;
   durationMinutes: number;
   passingScorePercentage: number;
+  reconnectPolicy?: {
+    enabled?: boolean;
+    maxReconnectAttempts?: number;
+    gracePeriodSeconds?: number;
+    terminateIfExceeded?: boolean;
+  };
   sections: Array<{
     sectionId: string;
     title: string;
@@ -45,6 +57,15 @@ type ExamDetailApiResponse = {
     }>;
   }>;
 };
+
+function normalizeReconnectPolicy(policy: ExamDetailApiResponse['reconnectPolicy']) {
+  return {
+    enabled: policy?.enabled ?? true,
+    maxReconnectAttempts: policy?.maxReconnectAttempts ?? 3,
+    gracePeriodSeconds: policy?.gracePeriodSeconds ?? 60,
+    terminateIfExceeded: policy?.terminateIfExceeded ?? true,
+  };
+}
 
 type AuthoringListApiResponse = {
   items: Array<{
@@ -79,6 +100,7 @@ export async function getEditorExam(examId: string, signal?: AbortSignal): Promi
     status,
     durationMinutes: detail.durationMinutes,
     passingScorePercentage: detail.passingScorePercentage,
+    reconnectPolicy: normalizeReconnectPolicy(detail.reconnectPolicy),
     sections: detail.sections.map((section) => ({
       sectionId: section.sectionId,
       title: section.title,
@@ -115,6 +137,12 @@ export function createEmptyEditorExam(): EditorExamDraft {
     status: 'draft',
     durationMinutes: 60,
     passingScorePercentage: 70,
+    reconnectPolicy: {
+      enabled: true,
+      maxReconnectAttempts: 3,
+      gracePeriodSeconds: 60,
+      terminateIfExceeded: true,
+    },
     sections: [
       {
         sectionId: crypto.randomUUID(),
