@@ -7,6 +7,7 @@ import { AttemptResultPage } from './pages/AttemptResultPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { ImportExamPage } from './pages/ImportExamPage';
 import { PerformanceDashboardPage } from './pages/PerformanceDashboardPage';
+import { AuthoringTestsPage } from './pages/AuthoringTestsPage';
 
 function PlaceholderPage() {
   return (
@@ -28,6 +29,7 @@ export function App() {
         <Route path="/attempts/:attemptId/result" element={<AttemptResultPage />} />
         <Route path="/history" element={<HistoryPage />} />
         <Route path="/dashboard" element={<PerformanceDashboardPage />} />
+        <Route path="/authoring/tests" element={<AuthoringTestsPage />} />
         <Route path="*" element={<PlaceholderPage />} />
       </Route>
     </Routes>

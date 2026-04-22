@@ -13,6 +13,17 @@ public sealed record ExamSummaryResponse(
 
 public sealed record ListExamsResponse(IReadOnlyList<ExamSummaryResponse> Items);
 
+public sealed record AuthoringTestSummaryResponse(
+    Guid ExamId,
+    string Title,
+    string Description,
+    string Status,
+    int QuestionCount,
+    int SectionCount,
+    DateTimeOffset? UpdatedAt);
+
+public sealed record ListAuthoringTestsResponse(IReadOnlyList<AuthoringTestSummaryResponse> Items);
+
 public sealed record ExamQuestionOptionPreviewResponse(
     string OptionId,
     string Text,
