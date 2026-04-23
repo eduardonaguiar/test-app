@@ -408,9 +408,11 @@ public sealed class AttemptService(
 
         if (attempt.Result is null)
         {
+            scoredResult.QuestionReviewsJson = questionReviewsJson;
+            scoredResult.TopicAnalysisJson = topicAnalysisJson;
+
+            dbContext.AttemptResults.Add(scoredResult);
             attempt.Result = scoredResult;
-            attempt.Result.QuestionReviewsJson = questionReviewsJson;
-            attempt.Result.TopicAnalysisJson = topicAnalysisJson;
         }
         else
         {
