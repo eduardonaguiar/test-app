@@ -33,7 +33,9 @@ public sealed class ExamImportServiceTests
 
         var exception = await action.Should().ThrowAsync<ExamImportException>();
         exception.Which.ErrorCode.Should().Be("validation_failed");
-        exception.Which.Errors.Should().Contain(error => error.Path.Contains("metadata") && error.Message.Contains("required"));
+        exception.Which.Errors.Should().Contain(error =>
+            error.Path.Contains("metadata") &&
+            error.Message.Contains("required", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
