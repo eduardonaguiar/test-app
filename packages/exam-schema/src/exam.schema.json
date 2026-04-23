@@ -20,7 +20,7 @@
       "description": "Schema version expected by the importer."
     },
     "metadata": {
-      "$ref": "#/definitions/metadata"
+      "$ref": "#/$defs/metadata"
     },
     "durationMinutes": {
       "type": "integer",
@@ -34,17 +34,17 @@
       "description": "Minimum score needed to pass, in percentage."
     },
     "reconnectPolicy": {
-      "$ref": "#/definitions/reconnectPolicy"
+      "$ref": "#/$defs/reconnectPolicy"
     },
     "sections": {
       "type": "array",
       "minItems": 1,
       "items": {
-        "$ref": "#/definitions/section"
+        "$ref": "#/$defs/section"
       }
     }
   },
-  "definitions": {
+  "$defs": {
     "metadata": {
       "type": "object",
       "additionalProperties": false,
@@ -126,7 +126,7 @@
           "type": "array",
           "minItems": 1,
           "items": {
-            "$ref": "#/definitions/question"
+            "$ref": "#/$defs/question"
           }
         }
       }
@@ -158,7 +158,7 @@
           "type": "array",
           "minItems": 2,
           "items": {
-            "$ref": "#/definitions/option"
+            "$ref": "#/$defs/option"
           }
         },
         "correctOptionId": {
@@ -208,6 +208,23 @@
           "minLength": 1
         }
       }
+    }
+  },
+  "definitions": {
+    "metadata": {
+      "$ref": "#/$defs/metadata"
+    },
+    "reconnectPolicy": {
+      "$ref": "#/$defs/reconnectPolicy"
+    },
+    "section": {
+      "$ref": "#/$defs/section"
+    },
+    "question": {
+      "$ref": "#/$defs/question"
+    },
+    "option": {
+      "$ref": "#/$defs/option"
     }
   }
 }
