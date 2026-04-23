@@ -344,10 +344,10 @@ public sealed class AttemptService(
 
         if (existingAnswer is null)
         {
-            attempt.Answers.Add(new AttemptAnswerEntity
+            dbContext.AttemptAnswers.Add(new AttemptAnswerEntity
             {
                 Id = Guid.NewGuid(),
-                AttemptId = attempt.Id,
+                Attempt = attempt,
                 QuestionId = command.QuestionId,
                 SelectedOptionId = command.SelectedOptionId,
                 UpdatedAtUtc = now
