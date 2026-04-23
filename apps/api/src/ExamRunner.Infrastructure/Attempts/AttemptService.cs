@@ -238,58 +238,70 @@ public sealed class AttemptService(
 
     public async Task<AttemptExecutionStateSnapshot?> ReconnectAsync(Guid attemptId, CancellationToken cancellationToken = default)
     {
-        var attempt = await LoadAttemptGraphAsync(attemptId, asNoTracking: false, cancellationToken);
-
-        if (attempt is null)
+        for (var retry = 0; retry < 2; retry++)
         {
-            return null;
+            var attempt = await LoadAttemptGraphAsync(attemptId, asNoTracking: false, cancellationToken);
+
+            if (attempt is null)
+            {
+                return null;
+            }
+
+            var now = timeProvider.GetUtcNow();
+            var hasTimelineTransition = ApplyTimelineTransition(attempt, now);
+
+            if (hasTimelineTransition)
+            {
+                await dbContext.SaveChangesAsync(cancellationToken);
+            }
+
+            if (attempt.Status != AttemptStatuses.InProgress)
+            {
+                throw new InvalidOperationException("Only attempts in progress can be reconnected.");
+            }
+
+            var disconnectedAt = attempt.LastSeenAtUtc;
+            var reconnectDecision = AttemptLifecyclePolicy.EvaluateReconnect(
+                attempt.Exam.ReconnectEnabled,
+                attempt.Exam.MaxReconnectAttempts,
+                attempt.Exam.ReconnectGracePeriodSeconds,
+                attempt.Exam.ReconnectTerminateIfExceeded,
+                attempt.ReconnectEvents.Count,
+                disconnectedAt,
+                now);
+
+            attempt.ReconnectEvents.Add(new ReconnectEventEntity
+            {
+                Id = Guid.NewGuid(),
+                AttemptId = attempt.Id,
+                SequenceNumber = reconnectDecision.SequenceNumber,
+                DisconnectedAtUtc = disconnectedAt,
+                ReconnectedAtUtc = now,
+                OfflineDurationSeconds = reconnectDecision.OfflineDurationSeconds,
+                GracePeriodRespected = reconnectDecision.GracePeriodRespected,
+                FinalizedAttempt = reconnectDecision.FinalizeAttempt
+            });
+
+            if (reconnectDecision.FinalizeAttempt)
+            {
+                attempt.Status = AttemptStatuses.Finalized;
+                attempt.SubmittedAtUtc ??= now;
+            }
+
+            attempt.LastSeenAtUtc = now;
+
+            try
+            {
+                await dbContext.SaveChangesAsync(cancellationToken);
+                return BuildExecutionStateSnapshot(attempt, now);
+            }
+            catch (DbUpdateConcurrencyException) when (retry == 0)
+            {
+                dbContext.ChangeTracker.Clear();
+            }
         }
 
-        var now = timeProvider.GetUtcNow();
-        var hasTimelineTransition = ApplyTimelineTransition(attempt, now);
-
-        if (hasTimelineTransition)
-        {
-            await dbContext.SaveChangesAsync(cancellationToken);
-        }
-
-        if (attempt.Status != AttemptStatuses.InProgress)
-        {
-            throw new InvalidOperationException("Only attempts in progress can be reconnected.");
-        }
-
-        var disconnectedAt = attempt.LastSeenAtUtc;
-        var reconnectDecision = AttemptLifecyclePolicy.EvaluateReconnect(
-            attempt.Exam.ReconnectEnabled,
-            attempt.Exam.MaxReconnectAttempts,
-            attempt.Exam.ReconnectGracePeriodSeconds,
-            attempt.Exam.ReconnectTerminateIfExceeded,
-            attempt.ReconnectEvents.Count,
-            disconnectedAt,
-            now);
-
-        attempt.ReconnectEvents.Add(new ReconnectEventEntity
-        {
-            Id = Guid.NewGuid(),
-            AttemptId = attempt.Id,
-            SequenceNumber = reconnectDecision.SequenceNumber,
-            DisconnectedAtUtc = disconnectedAt,
-            ReconnectedAtUtc = now,
-            OfflineDurationSeconds = reconnectDecision.OfflineDurationSeconds,
-            GracePeriodRespected = reconnectDecision.GracePeriodRespected,
-            FinalizedAttempt = reconnectDecision.FinalizeAttempt
-        });
-
-        if (reconnectDecision.FinalizeAttempt)
-        {
-            attempt.Status = AttemptStatuses.Finalized;
-            attempt.SubmittedAtUtc ??= now;
-        }
-
-        attempt.LastSeenAtUtc = now;
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        return BuildExecutionStateSnapshot(attempt, now);
+        throw new InvalidOperationException("Could not reconnect attempt due to concurrent updates.");
     }
 
     public async Task<AttemptExecutionStateSnapshot?> SaveAnswerAsync(SaveAttemptAnswerCommand command, CancellationToken cancellationToken = default)
