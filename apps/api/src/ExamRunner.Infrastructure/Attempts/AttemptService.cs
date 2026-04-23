@@ -270,7 +270,7 @@ public sealed class AttemptService(
                 disconnectedAt,
                 now);
 
-            attempt.ReconnectEvents.Add(new ReconnectEventEntity
+            dbContext.ReconnectEvents.Add(new ReconnectEventEntity
             {
                 Id = Guid.NewGuid(),
                 AttemptId = attempt.Id,
