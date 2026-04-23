@@ -27,7 +27,7 @@ public sealed class ExamImportServiceTests
     public async Task ImportAsync_WithMissingRequiredField_ShouldFailSchemaValidation()
     {
         var service = CreateSut(new FakeExamImportPersistence());
-        var payload = BuildValidPayloadJson().Replace("\"title\": \"Prova de Exemplo\",\n", string.Empty);
+        var payload = BuildValidPayloadJson().Replace("\"title\": \"Prova de Exemplo\",", string.Empty);
 
         var action = () => service.ImportAsync(payload, CancellationToken.None);
 
