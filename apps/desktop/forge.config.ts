@@ -5,11 +5,16 @@ import { MakerZIP } from '@electron-forge/maker-zip';
 import { VitePlugin } from '@electron-forge/plugin-vite';
 import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-natives';
 import type { ForgeConfig } from '@electron-forge/shared-types';
+import path from 'node:path';
 
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
     executableName: 'ExamRunnerDesktop',
+    extraResource: [
+      path.resolve(__dirname, 'web-dist'),
+      path.resolve(__dirname, '../api/publish/win-x64'),
+    ],
   },
   rebuildConfig: {},
   makers: [
