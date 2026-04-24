@@ -1,6 +1,7 @@
 using ExamRunner.Application.Attempts;
 using ExamRunner.Domain.Attempts;
 using ExamRunner.Infrastructure.Data;
+using FluentValidation;
 using ExamRunner.Infrastructure.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
@@ -10,9 +11,13 @@ namespace ExamRunner.Infrastructure.Attempts;
 public sealed class AttemptService(
     ExamRunnerDbContext dbContext,
     TimeProvider timeProvider,
+    IValidator<CreateAttemptCommand>? createAttemptCommandValidator = null,
+    IValidator<SaveAttemptAnswerCommand>? saveAttemptAnswerCommandValidator = null,
     IAttemptScoringService? attemptScoringService = null) : IAttemptService
 {
     private static readonly JsonSerializerOptions ResultSerializationOptions = new(JsonSerializerDefaults.Web);
+    private static readonly IValidator<CreateAttemptCommand> FallbackCreateAttemptCommandValidator = new CreateAttemptCommandValidator();
+    private static readonly IValidator<SaveAttemptAnswerCommand> FallbackSaveAttemptAnswerCommandValidator = new SaveAttemptAnswerCommandValidator();
 
     public async Task<IReadOnlyList<AttemptHistoryItemSnapshot>> GetHistoryAsync(CancellationToken cancellationToken = default)
     {
@@ -128,6 +133,7 @@ public sealed class AttemptService(
 
     public async Task<AttemptSnapshot> CreateAsync(CreateAttemptCommand command, CancellationToken cancellationToken = default)
     {
+        await (createAttemptCommandValidator ?? FallbackCreateAttemptCommandValidator).ValidateAndThrowAsync(command, cancellationToken);
         var exam = await dbContext.Exams
             .AsNoTracking()
             .SingleOrDefaultAsync(x => x.Id == command.ExamId, cancellationToken);
@@ -306,6 +312,7 @@ public sealed class AttemptService(
 
     public async Task<AttemptExecutionStateSnapshot?> SaveAnswerAsync(SaveAttemptAnswerCommand command, CancellationToken cancellationToken = default)
     {
+        await (saveAttemptAnswerCommandValidator ?? FallbackSaveAttemptAnswerCommandValidator).ValidateAndThrowAsync(command, cancellationToken);
         var attempt = await LoadAttemptGraphAsync(command.AttemptId, asNoTracking: false, cancellationToken);
 
         if (attempt is null)

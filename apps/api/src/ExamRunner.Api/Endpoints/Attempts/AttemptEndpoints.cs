@@ -218,20 +218,6 @@ public static class AttemptEndpoints
         IAttemptService attemptService,
         CancellationToken cancellationToken)
     {
-        if (request.ExamId == Guid.Empty)
-        {
-            var badRequest = new ProblemDetails
-            {
-                Title = "Invalid attempt payload",
-                Detail = "examId must be a non-empty GUID.",
-                Status = StatusCodes.Status400BadRequest,
-                Type = $"https://httpstatuses.com/{StatusCodes.Status400BadRequest}"
-            };
-
-            badRequest.Extensions["code"] = ApiErrorCodes.ValidationFailed;
-            return TypedResults.BadRequest(badRequest);
-        }
-
         try
         {
             var snapshot = await attemptService.CreateAsync(new CreateAttemptCommand(request.ExamId), cancellationToken);
@@ -285,32 +271,6 @@ public static class AttemptEndpoints
         IAttemptService attemptService,
         CancellationToken cancellationToken)
     {
-        if (attemptId == Guid.Empty)
-        {
-            var badRequest = new ProblemDetails
-            {
-                Title = "Invalid answer route parameters",
-                Detail = "attemptId must be a non-empty GUID.",
-                Status = StatusCodes.Status400BadRequest,
-                Type = $"https://httpstatuses.com/{StatusCodes.Status400BadRequest}"
-            };
-            badRequest.Extensions["code"] = ApiErrorCodes.ValidationFailed;
-            return TypedResults.BadRequest(badRequest);
-        }
-
-        if (questionId == Guid.Empty)
-        {
-            var badRequest = new ProblemDetails
-            {
-                Title = "Invalid answer route parameters",
-                Detail = "questionId must be a non-empty GUID.",
-                Status = StatusCodes.Status400BadRequest,
-                Type = $"https://httpstatuses.com/{StatusCodes.Status400BadRequest}"
-            };
-            badRequest.Extensions["code"] = ApiErrorCodes.ValidationFailed;
-            return TypedResults.BadRequest(badRequest);
-        }
-
         try
         {
             var snapshot = await attemptService.SaveAnswerAsync(
