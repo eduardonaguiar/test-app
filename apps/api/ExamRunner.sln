@@ -12,6 +12,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExamRunner.Domain", "src\Ex
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExamRunner.UnitTests", "tests\ExamRunner.UnitTests\ExamRunner.UnitTests.csproj", "{57AC8706-71FA-40F7-BF40-CEE2D8498EEF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExamRunner.IntegrationTests", "tests\ExamRunner.IntegrationTests\ExamRunner.IntegrationTests.csproj", "{128EA1D8-ADE6-47F8-AB89-0F896FAC4756}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +41,10 @@ Global
 		{57AC8706-71FA-40F7-BF40-CEE2D8498EEF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{57AC8706-71FA-40F7-BF40-CEE2D8498EEF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{57AC8706-71FA-40F7-BF40-CEE2D8498EEF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{128EA1D8-ADE6-47F8-AB89-0F896FAC4756}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{128EA1D8-ADE6-47F8-AB89-0F896FAC4756}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{128EA1D8-ADE6-47F8-AB89-0F896FAC4756}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{128EA1D8-ADE6-47F8-AB89-0F896FAC4756}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
