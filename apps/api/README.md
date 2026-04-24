@@ -31,6 +31,35 @@ dotnet ef database update \
   --startup-project apps/api/src/ExamRunner.Api/ExamRunner.Api.csproj
 ```
 
+## Publicação desktop Windows (self-contained)
+
+Para gerar um executável local da API para Windows sem depender de Docker, use:
+
+```bash
+pnpm api:publish:win-x64
+```
+
+O script executa:
+
+```bash
+dotnet publish apps/api/src/ExamRunner.Api/ExamRunner.Api.csproj \
+  -c Release \
+  -r win-x64 \
+  --self-contained true \
+  -p:PublishSingleFile=true \
+  -p:IncludeNativeLibrariesForSelfExtract=true \
+  -o apps/api/publish/win-x64
+```
+
+Saída esperada:
+
+- executável: `apps/api/publish/win-x64/ExamRunner.Api.exe`;
+- execução local no Windows (PowerShell):
+
+```powershell
+.\apps\api\publish\win-x64\ExamRunner.Api.exe
+```
+
 ## Endpoints disponíveis
 
 - `GET /api/health`

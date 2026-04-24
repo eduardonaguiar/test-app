@@ -240,6 +240,14 @@ Esse comando sobe:
 - backend com `dotnet watch`;
 - frontend com Vite.
 
+Para publicar a API como executável self-contained para Windows (modo desktop, sem Docker):
+
+```bash
+pnpm api:publish:win-x64
+```
+
+O artefato é gerado em `apps/api/publish/win-x64/ExamRunner.Api.exe`.
+
 > Observação: para evitar ambiguidades de operação, o padrão no Compose é `dotnet run`, enquanto `dotnet watch` é o padrão do fluxo local sem Compose.
 
 ## Próximos passos (pós-MVP)
