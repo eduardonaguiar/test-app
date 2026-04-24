@@ -6,6 +6,10 @@ declare global {
       apiBaseUrl: string;
       isDesktop: true;
     };
+    desktopAppControls: {
+      quitApp: () => Promise<void>;
+      openLogsDirectory: () => Promise<string>;
+    };
   }
 }
 

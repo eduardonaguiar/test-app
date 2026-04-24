@@ -1,4 +1,4 @@
-import { app, BrowserWindow, session, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, session, shell } from 'electron';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createWriteStream, existsSync, mkdirSync } from 'node:fs';
 import type { WriteStream } from 'node:fs';
@@ -366,12 +366,38 @@ const loadBackendStartupError = async (mainWindow: BrowserWindow, details: strin
   const message = `
     <main style="font-family: Arial, sans-serif; margin: 2rem; max-width: 56rem; line-height: 1.6;">
       <h1>Não foi possível iniciar o backend local</h1>
-      <p>O aplicativo não conseguiu confirmar o endpoint <code>/health</code> do backend no tempo esperado.</p>
+      <p>O aplicativo não conseguiu concluir a inicialização porque o backend local não respondeu a tempo.</p>
       <p>Verifique se não há outra aplicação ocupando a porta configurada e tente abrir o app novamente.</p>
+      <p>Você pode fechar o aplicativo agora ou abrir a pasta de logs para diagnóstico.</p>
+      <div style="display: flex; gap: 0.75rem; margin: 1.25rem 0 1.5rem;">
+        <button id="open-logs" style="padding: 0.55rem 0.95rem; border: 1px solid #d1d5db; border-radius: 0.5rem; background: #fff; cursor: pointer;">Abrir logs</button>
+        <button id="close-app" style="padding: 0.55rem 0.95rem; border: 1px solid #2563eb; border-radius: 0.5rem; background: #2563eb; color: #fff; cursor: pointer;">Fechar aplicativo</button>
+      </div>
       <p>Detalhes técnicos:</p>
       <pre style="padding: 1rem; background: #f5f5f5; border: 1px solid #ddd; border-radius: 8px; white-space: pre-wrap;">${safeHtml(details)}</pre>
       <p>Arquivo de log principal: <code>${safeHtml(path.join(resolveDesktopStoragePaths().logsDirectory, `${MAIN_LOG_FILE_PREFIX}-${logSessionId}.log`))}</code></p>
       <p>Arquivo de log do backend: <code>${safeHtml(path.join(resolveDesktopStoragePaths().logsDirectory, `${API_LOG_FILE_PREFIX}-${logSessionId}.log`))}</code></p>
+    </main>
+    <script>
+      document.getElementById('close-app')?.addEventListener('click', () => {
+        window.desktopAppControls?.quitApp();
+      });
+
+      document.getElementById('open-logs')?.addEventListener('click', async () => {
+        await window.desktopAppControls?.openLogsDirectory();
+      });
+    </script>
+  `;
+
+  await mainWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(message)}`);
+};
+
+const loadStartupLoadingScreen = async (mainWindow: BrowserWindow): Promise<void> => {
+  const message = `
+    <main style="font-family: Arial, sans-serif; margin: 2rem; max-width: 48rem; line-height: 1.6;">
+      <h1>Iniciando Exam Runner...</h1>
+      <p>Estamos preparando o backend local para você continuar seus estudos com segurança.</p>
+      <p style="margin-top: 1rem; color: #374151;">Isso normalmente leva alguns segundos.</p>
     </main>
   `;
 
@@ -499,6 +525,7 @@ const createWindow = async (): Promise<void> => {
   }
 
   try {
+    await loadStartupLoadingScreen(mainWindow);
     await waitForBackendHealth();
     await loadRenderer(mainWindow);
     writeMainLog('UI carregada com sucesso.');
@@ -511,6 +538,16 @@ const createWindow = async (): Promise<void> => {
 };
 
 app.whenReady().then(() => {
+  ipcMain.handle('desktop:quit-app', () => {
+    app.quit();
+  });
+
+  ipcMain.handle('desktop:open-logs-directory', async () => {
+    const logsDirectory = resolveDesktopStoragePaths().logsDirectory;
+    await shell.openPath(logsDirectory);
+    return logsDirectory;
+  });
+
   session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => {
     callback(false);
   });
