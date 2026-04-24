@@ -29,6 +29,9 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IExamReadRepository, ExamReadRepository>();
         services.AddScoped<IExamPublicationService, ExamPublicationService>();
         services.AddScoped<IAttemptScoringService, ObjectiveAttemptScoringService>();
+        services.AddScoped<IAttemptLifecycleService, AttemptLifecycleService>();
+        services.AddScoped<IAttemptReconnectService, AttemptReconnectService>();
+        services.AddScoped<IAttemptReportingService, AttemptReportingService>();
         services.AddScoped<IAttemptService, AttemptService>();
 
         services.AddScoped<IOfficialExamSchemaValidator, OfficialExamSchemaValidator>();
