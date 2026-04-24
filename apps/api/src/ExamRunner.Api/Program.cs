@@ -1,7 +1,12 @@
 using ExamRunner.Api.Endpoints.Attempts;
 using ExamRunner.Api.Endpoints.Exams;
 using ExamRunner.Api.Endpoints.Health;
+using ExamRunner.Api.Handlers;
+using ExamRunner.Api.Validation;
+using ExamRunner.Api.Validation.Requests;
+using ExamRunner.Application.Attempts;
 using ExamRunner.Infrastructure.Extensions;
+using FluentValidation;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,8 +18,11 @@ builder.Services.AddProblemDetails(options =>
         context.ProblemDetails.Extensions["timestamp"] = DateTimeOffset.UtcNow;
     };
 });
+builder.Services.AddExceptionHandler<ValidationExceptionHandler>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddValidatorsFromAssemblyContaining<CreateAttemptRequestValidator>();
+builder.Services.AddValidatorsFromAssemblyContaining<CreateAttemptCommandValidator>();
 builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
 
 var app = builder.Build();
@@ -58,6 +66,7 @@ var api = app.MapGroup("/api")
     .WithTags("API")
     .WithOpenApi();
 
+api.AddEndpointFilterFactory(ValidationEndpointFilterFactory.Create);
 api.MapHealthEndpoints();
 api.MapExamEndpoints();
 api.MapAttemptEndpoints();
