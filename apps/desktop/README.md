@@ -26,6 +26,13 @@ O comando raiz `desktop:web:prepare` executa:
 1. `apps/web` build com base relativa (`VITE_WEB_BASE_PATH=./`);
 2. cópia do output para `apps/desktop/web-dist`.
 
+Para o pacote final instalado, o Electron Forge copia como `extraResource`:
+
+- `apps/desktop/web-dist` (frontend estático);
+- `apps/api/publish/win-x64` (backend sidecar publicado, com runtime/config).
+
+O comando raiz `desktop:artifacts:prepare` garante os dois artefatos antes de `desktop:package` e `desktop:make`.
+
 ## Comandos locais (a partir da raiz)
 
 ```bash

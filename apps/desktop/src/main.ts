@@ -19,6 +19,10 @@ const DESKTOP_APP_DATA_DIRECTORY = 'ExamRunner';
 const DESKTOP_DATA_SUBDIRECTORY = 'data';
 const BACKEND_HEALTH_TIMEOUT_MS = 30_000;
 const BACKEND_HEALTH_RETRY_INTERVAL_MS = 750;
+const REQUIRED_PACKAGED_RESOURCE_DIRECTORIES = {
+  backendPublish: 'win-x64',
+  webBuild: 'web-dist',
+} as const;
 
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string;
 
@@ -26,6 +30,7 @@ let backendProcess: ChildProcess | null = null;
 let backendLogStream: WriteStream | null = null;
 let mainLogStream: WriteStream | null = null;
 let isBackendShutdownInProgress = false;
+let startupValidationError: string | null = null;
 const logSessionId = new Date().toISOString().replaceAll(':', '-');
 
 const safeHtml = (value: string): string =>
@@ -85,15 +90,25 @@ const isPortAvailable = async (port: number): Promise<boolean> =>
 
 const resolveExecutableName = (): string => (process.platform === 'win32' ? 'ExamRunner.Api.exe' : 'ExamRunner.Api');
 
-const resolveBackendExecutableCandidates = (): string[] => {
+const resolvePackagedBackendCandidates = (): string[] => {
   const executableName = resolveExecutableName();
 
+  return [
+    path.join(process.resourcesPath, REQUIRED_PACKAGED_RESOURCE_DIRECTORIES.backendPublish, executableName),
+    path.join(process.resourcesPath, 'backend', executableName),
+    path.join(process.resourcesPath, 'backend', 'ExamRunner.Api', executableName),
+    path.join(process.resourcesPath, executableName),
+  ];
+};
+
+const resolvePackagedWebIndexCandidates = (): string[] => [
+  path.join(process.resourcesPath, REQUIRED_PACKAGED_RESOURCE_DIRECTORIES.webBuild, 'index.html'),
+  path.join(app.getAppPath(), 'web-dist', 'index.html'),
+];
+
+const resolveBackendExecutableCandidates = (): string[] => {
   if (app.isPackaged) {
-    return [
-      path.join(process.resourcesPath, 'backend', executableName),
-      path.join(process.resourcesPath, 'backend', 'ExamRunner.Api', executableName),
-      path.join(process.resourcesPath, executableName),
-    ];
+    return resolvePackagedBackendCandidates();
   }
 
   const desktopRoot = app.getAppPath();
@@ -135,6 +150,13 @@ const resolveBackendLaunchTarget = (backendPort: number): BackendLaunchTarget =>
         executableDescription: candidate,
       };
     }
+  }
+
+  if (app.isPackaged) {
+    const expectedCandidates = resolveBackendExecutableCandidates().join('\n - ');
+    throw new Error(
+      `Artefato do backend não encontrado no pacote final. Caminhos esperados:\n - ${expectedCandidates}`,
+    );
   }
 
   const desktopRoot = app.getAppPath();
@@ -294,6 +316,20 @@ const loadMissingWebBuildError = async (mainWindow: BrowserWindow, expectedPath:
   await mainWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(message)}`);
 };
 
+const loadPackagedArtifactsError = async (mainWindow: BrowserWindow, details: string): Promise<void> => {
+  const message = `
+    <main style="font-family: Arial, sans-serif; margin: 2rem; max-width: 56rem; line-height: 1.6;">
+      <h1>Artefatos obrigatórios não encontrados</h1>
+      <p>O aplicativo instalado não localizou os arquivos necessários do frontend ou backend.</p>
+      <p>Revise o empacotamento do Electron Forge (extraResource) e gere novamente os artefatos.</p>
+      <p>Detalhes:</p>
+      <pre style="padding: 1rem; background: #f5f5f5; border: 1px solid #ddd; border-radius: 8px; white-space: pre-wrap;">${safeHtml(details)}</pre>
+    </main>
+  `;
+
+  await mainWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(message)}`);
+};
+
 const loadBackendStartupError = async (mainWindow: BrowserWindow, details: string): Promise<void> => {
   const message = `
     <main style="font-family: Arial, sans-serif; margin: 2rem; max-width: 56rem; line-height: 1.6;">
@@ -343,6 +379,28 @@ const waitForBackendHealth = async (): Promise<void> => {
   );
 };
 
+const validatePackagedArtifacts = (): string | null => {
+  if (!app.isPackaged) {
+    return null;
+  }
+
+  const missingArtifacts: string[] = [];
+
+  if (!resolvePackagedWebIndexCandidates().some((candidate) => existsSync(candidate))) {
+    missingArtifacts.push(
+      `Web build ausente. Esperado em um destes caminhos:\n - ${resolvePackagedWebIndexCandidates().join('\n - ')}`,
+    );
+  }
+
+  if (!resolvePackagedBackendCandidates().some((candidate) => existsSync(candidate))) {
+    missingArtifacts.push(
+      `Executável da API ausente. Esperado em um destes caminhos:\n - ${resolvePackagedBackendCandidates().join('\n - ')}`,
+    );
+  }
+
+  return missingArtifacts.length > 0 ? missingArtifacts.join('\n\n') : null;
+};
+
 const loadRenderer = async (mainWindow: BrowserWindow): Promise<void> => {
   if (!app.isPackaged) {
     for (const candidateUrl of WEB_DEV_SERVER_CANDIDATES) {
@@ -360,10 +418,10 @@ const loadRenderer = async (mainWindow: BrowserWindow): Promise<void> => {
     }
   }
 
-  const packagedWebIndexPath = path.join(app.getAppPath(), 'web-dist', 'index.html');
+  const packagedWebIndexPath = resolvePackagedWebIndexCandidates().find((candidate) => existsSync(candidate));
 
-  if (!existsSync(packagedWebIndexPath)) {
-    await loadMissingWebBuildError(mainWindow, packagedWebIndexPath);
+  if (!packagedWebIndexPath) {
+    await loadMissingWebBuildError(mainWindow, resolvePackagedWebIndexCandidates()[0]);
     return;
   }
 
@@ -382,6 +440,12 @@ const createWindow = async (): Promise<void> => {
     },
   });
 
+  if (startupValidationError) {
+    writeMainLog(`Falha de validação de artefatos no startup: ${startupValidationError}`);
+    await loadPackagedArtifactsError(mainWindow, startupValidationError);
+    return;
+  }
+
   try {
     await waitForBackendHealth();
     await loadRenderer(mainWindow);
@@ -398,6 +462,14 @@ app.whenReady().then(() => {
   const storagePaths = ensureDesktopStorageDirectories();
   mainLogStream = openMainLogStream();
   writeMainLog(`Electron pronto. Logs em ${storagePaths.logsDirectory}`);
+  startupValidationError = validatePackagedArtifacts();
+
+  if (startupValidationError) {
+    writeMainLog(`Validação de artefatos falhou: ${startupValidationError}`);
+    void createWindow();
+    return;
+  }
+
   startBackendProcess()
     .then(() => createWindow())
     .catch((error: unknown) => {
