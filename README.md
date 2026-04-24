@@ -74,6 +74,22 @@ O **Exam Runner** é um simulador de exames pensado para uso local (single devel
 └── scripts/
 ```
 
+## Estado atual vs alvo arquitetural (por milestone)
+
+### Milestone atual (as-built)
+
+- a solução roda de ponta a ponta com `Api`, `Infrastructure`, `Application` e `Domain` presentes no monorepo;
+- os fluxos críticos de tentativa já usam contratos em `Application` e regras centrais de ciclo de vida em `Domain`;
+- parte relevante da importação e da orquestração de persistência ainda está concentrada em `Infrastructure`.
+
+### Alvo dos próximos milestones
+
+- continuar movendo regras de negócio e orquestrações para `Application`/`Domain`;
+- manter `Api` focada em HTTP (endpoints, DI, middleware e contratos);
+- manter `Infrastructure` focada em EF Core/SQLite, adapters e detalhes técnicos.
+
+> Referência detalhada: `docs/architecture.md` contém o mapa de “estado atual” e “estado alvo” para reduzir drift de documentação.
+
 ## Onboarding rápido (novo desenvolvedor)
 
 ### 1) Pré-requisitos
@@ -109,6 +125,11 @@ Serviços disponíveis:
 - Web (Vite): `http://localhost:5173`
 - API (.NET): `http://localhost:8080`
 - Healthcheck API: `http://localhost:8080/api/health`
+
+Padrão operacional de desenvolvimento em Compose:
+
+- o serviço `api` roda com `dotnet run` (comportamento atual do `docker-compose.yml`);
+- hot reload (`dotnet watch`) fica como fluxo opcional fora do Compose via `pnpm api:dev`/`pnpm dev`.
 
 Para derrubar:
 
@@ -200,6 +221,8 @@ Esse comando sobe:
 
 - backend com `dotnet watch`;
 - frontend com Vite.
+
+> Observação: para evitar ambiguidades de operação, o padrão no Compose é `dotnet run`, enquanto `dotnet watch` é o padrão do fluxo local sem Compose.
 
 ## Próximos passos (pós-MVP)
 
