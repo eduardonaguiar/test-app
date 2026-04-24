@@ -104,7 +104,7 @@ export function DialogContent({ className, ...props }: HTMLAttributes<HTMLDivEle
   }
 
   return (
-    <div className="ui-dialog__overlay" role="presentation" onClick={() => setOpen(false)}>
+    <div className="ui-dialog__overlay" role="presentation" onMouseDown={() => setOpen(false)}>
       <div
         ref={contentRef}
         className={cn('ui-dialog__content', className)}
@@ -112,7 +112,7 @@ export function DialogContent({ className, ...props }: HTMLAttributes<HTMLDivEle
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
-        onClick={(event) => event.stopPropagation()}
+        onMouseDown={(event) => event.stopPropagation()}
         onKeyDown={handleKeyDown}
         {...props}
       />

@@ -30,6 +30,19 @@ export default [
       ...tseslint.configs.recommended.rules,
       ...reactHooks.configs.recommended.rules,
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "JSXOpeningElement[name.name='div'] > JSXAttribute[name.name='onClick']",
+          message:
+            'Evite onClick em div. Use um botão nativo ou componente semanticamente interativo com suporte a teclado.',
+        },
+        {
+          selector: "JSXOpeningElement[name.name='span'] > JSXAttribute[name.name='onClick']",
+          message:
+            'Evite onClick em span. Use um botão nativo ou componente semanticamente interativo com suporte a teclado.',
+        },
+      ],
     },
   },
 ];

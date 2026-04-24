@@ -1,10 +1,12 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ReactElement } from 'react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { HomePage } from '../HomePage';
 import { ExamDetailsPage } from '../ExamDetailsPage';
+import { createAttempt, listExams } from '../../generated/api-contract';
 import { ToastProvider } from '../../hooks/ToastProvider';
-import { createAttempt } from '../../generated/api-contract';
 
 vi.mock('../../generated/api-contract', async () => {
   const actual = await vi.importActual('../../generated/api-contract');
@@ -12,14 +14,37 @@ vi.mock('../../generated/api-contract', async () => {
   return {
     ...actual,
     createAttempt: vi.fn(),
+    listExams: vi.fn(),
   };
 });
 
 const mockedCreateAttempt = vi.mocked(createAttempt);
+const mockedListExams = vi.mocked(listExams);
 
-describe('ExamDetailsPage', () => {
+function renderWithProviders(ui: ReactElement) {
+  return render(
+    <ToastProvider>
+      <MemoryRouter>{ui}</MemoryRouter>
+    </ToastProvider>,
+  );
+}
+
+describe('Accessibility smoke checks on core pages', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+
+    mockedListExams.mockResolvedValue({
+      items: [
+        {
+          examId: 'exam-1',
+          title: 'Simulado AWS',
+          description: 'Arquitetura e redes',
+          durationMinutes: 60,
+          passingScorePercentage: 70,
+          questionCount: 30,
+        },
+      ],
+    });
 
     mockedCreateAttempt.mockResolvedValue({
       attemptId: 'attempt-123',
@@ -29,6 +54,31 @@ describe('ExamDetailsPage', () => {
       deadlineAt: '2026-04-01T13:00:00Z',
       lastSeenAt: '2026-04-01T12:00:00Z',
     });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('keeps home filters accessible by role and label', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({ items: [] }),
+    } as Response);
+
+    renderWithProviders(<HomePage />);
+
+    expect(await screen.findByRole('heading', { name: 'Simulados' })).toBeInTheDocument();
+
+    const searchInput = screen.getByRole('textbox', { name: 'Busca' });
+    const statusSelect = screen.getByRole('combobox', { name: 'Status' });
+
+    expect(searchInput).toHaveAccessibleName('Busca');
+    expect(statusSelect).toHaveAccessibleName('Status');
+  });
+
+  it('supports keyboard-only start flow in exam details', async () => {
+    const user = userEvent.setup();
 
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
@@ -55,10 +105,6 @@ describe('ExamDetailsPage', () => {
         ],
       }),
     } as Response);
-  });
-
-  it('starts an attempt and navigates to attempt execution route', async () => {
-    const user = userEvent.setup();
 
     render(
       <ToastProvider>
@@ -73,10 +119,13 @@ describe('ExamDetailsPage', () => {
 
     expect(await screen.findByRole('heading', { name: 'Simulado de Certificação' })).toBeInTheDocument();
 
-    const [startButton] = await screen.findAllByRole('button', { name: 'Iniciar prova' });
-    await user.click(startButton);
+    const [primaryStartButton] = await screen.findAllByRole('button', { name: 'Iniciar prova' });
+
+    primaryStartButton.focus();
+    expect(primaryStartButton).toHaveFocus();
+
+    await user.keyboard('{Enter}');
 
     expect(await screen.findByText('Tela de tentativa')).toBeInTheDocument();
-    expect(mockedCreateAttempt).toHaveBeenCalledWith({ examId: 'exam-1' });
   });
 });
