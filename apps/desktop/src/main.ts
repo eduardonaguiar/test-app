@@ -14,6 +14,8 @@ const WEB_DEV_SERVER_CANDIDATES = [
 const API_DEFAULT_PORT = 8080;
 const API_HOST = '127.0.0.1';
 const API_LOG_FILE_NAME = 'backend-sidecar.log';
+const DESKTOP_APP_DATA_DIRECTORY = 'ExamRunner';
+const DESKTOP_DATA_SUBDIRECTORY = 'data';
 const BACKEND_HEALTH_TIMEOUT_MS = 30_000;
 const BACKEND_HEALTH_RETRY_INTERVAL_MS = 750;
 
@@ -144,11 +146,37 @@ const resolveBackendLaunchTarget = (backendPort: number): BackendLaunchTarget =>
   };
 };
 
-const openBackendLogStream = (): WriteStream => {
-  const logsDirectory = path.join(app.getPath('logs'), 'ExamRunnerDesktop');
-  mkdirSync(logsDirectory, { recursive: true });
 
-  const logFilePath = path.join(logsDirectory, API_LOG_FILE_NAME);
+type DesktopStoragePaths = {
+  dataRootDirectory: string;
+  sqliteDirectory: string;
+  sqliteDatabasePath: string;
+  logsDirectory: string;
+};
+
+const resolveDesktopStoragePaths = (): DesktopStoragePaths => {
+  const appDataRoot = app.getPath('appData');
+  const dataRootDirectory = path.join(appDataRoot, DESKTOP_APP_DATA_DIRECTORY);
+  const sqliteDirectory = path.join(dataRootDirectory, DESKTOP_DATA_SUBDIRECTORY);
+
+  return {
+    dataRootDirectory,
+    sqliteDirectory,
+    sqliteDatabasePath: path.join(sqliteDirectory, 'exam-runner.db'),
+    logsDirectory: path.join(dataRootDirectory, 'logs'),
+  };
+};
+
+const ensureDesktopStorageDirectories = (): DesktopStoragePaths => {
+  const storagePaths = resolveDesktopStoragePaths();
+  mkdirSync(storagePaths.sqliteDirectory, { recursive: true });
+  mkdirSync(storagePaths.logsDirectory, { recursive: true });
+  return storagePaths;
+};
+
+const openBackendLogStream = (): WriteStream => {
+  const storagePaths = ensureDesktopStorageDirectories();
+  const logFilePath = path.join(storagePaths.logsDirectory, API_LOG_FILE_NAME);
   return createWriteStream(logFilePath, { flags: 'a' });
 };
 
@@ -171,10 +199,13 @@ const startBackendProcess = async (): Promise<void> => {
     throw new Error(`A porta ${backendPort} não está disponível para o backend sidecar.`);
   }
 
+  const storagePaths = ensureDesktopStorageDirectories();
   const launchTarget = resolveBackendLaunchTarget(backendPort);
   backendLogStream = openBackendLogStream();
   writeBackendLog(`Iniciando backend sidecar em http://${API_HOST}:${backendPort}`);
   writeBackendLog(`Executável alvo: ${launchTarget.executableDescription}`);
+  writeBackendLog(`Diretório de dados local: ${storagePaths.dataRootDirectory}`);
+  writeBackendLog(`SQLite local: ${storagePaths.sqliteDatabasePath}`);
 
   const spawnedProcess = spawn(launchTarget.command, launchTarget.args, {
     cwd: launchTarget.cwd,
@@ -183,6 +214,9 @@ const startBackendProcess = async (): Promise<void> => {
       ASPNETCORE_ENVIRONMENT: app.isPackaged ? 'Production' : 'Development',
       ASPNETCORE_URLS: `http://${API_HOST}:${backendPort}`,
       EXAM_RUNNER_API_PORT: String(backendPort),
+      Desktop__Enabled: 'true',
+      Desktop__DatabasePath: storagePaths.sqliteDatabasePath,
+      EXAM_RUNNER_DATA_DIR: storagePaths.dataRootDirectory,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
@@ -251,7 +285,7 @@ const loadBackendStartupError = async (mainWindow: BrowserWindow, details: strin
       <p>Verifique se não há outra aplicação ocupando a porta configurada e tente abrir o app novamente.</p>
       <p>Detalhes técnicos:</p>
       <pre style="padding: 1rem; background: #f5f5f5; border: 1px solid #ddd; border-radius: 8px; white-space: pre-wrap;">${safeHtml(details)}</pre>
-      <p>Arquivo de log: <code>${safeHtml(path.join(app.getPath('logs'), 'ExamRunnerDesktop', API_LOG_FILE_NAME))}</code></p>
+      <p>Arquivo de log: <code>${safeHtml(path.join(resolveDesktopStoragePaths().logsDirectory, API_LOG_FILE_NAME))}</code></p>
     </main>
   `;
 
