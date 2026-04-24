@@ -42,6 +42,7 @@
     "build:desktop": "pnpm run desktop:package",
     "make:desktop": "pnpm run desktop:make",
     "build:web": "pnpm --filter @exam-runner/web build",
-    "desktop:web:prepare": "pnpm --filter @exam-runner/web build --mode desktop && node ./scripts/prepare-desktop-web.mjs"
+    "desktop:web:prepare": "pnpm --filter @exam-runner/web build --mode desktop && node ./scripts/prepare-desktop-web.mjs",
+    "api:publish:win-x64": "bash ./scripts/publish-api-win-x64.sh"
   }
 }
