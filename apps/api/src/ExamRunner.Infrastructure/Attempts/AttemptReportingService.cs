@@ -12,6 +12,7 @@ public sealed class AttemptReportingService(ExamRunnerDbContext dbContext) : IAt
         var attempts = await dbContext.Attempts
             .Where(x => x.Status != AttemptStatuses.InProgress)
             .AsNoTracking()
+            .OrderByDescending(attempt => attempt.SubmittedAtUtc ?? attempt.StartedAtUtc)
             .Select(attempt => new
             {
                 attempt.Id,
@@ -27,7 +28,6 @@ public sealed class AttemptReportingService(ExamRunnerDbContext dbContext) : IAt
             .ToListAsync(cancellationToken);
 
         return attempts
-            .OrderByDescending(attempt => attempt.SubmittedAtUtc ?? attempt.StartedAtUtc)
             .Select(attempt =>
             {
                 var effectiveEndAt = attempt.SubmittedAtUtc ?? attempt.LastSeenAtUtc;
@@ -49,42 +49,63 @@ public sealed class AttemptReportingService(ExamRunnerDbContext dbContext) : IAt
 
     public async Task<PerformanceDashboardSnapshot> GetPerformanceDashboardAsync(CancellationToken cancellationToken = default)
     {
-        var attempts = await dbContext.Attempts
-            .Include(x => x.Result)
+        var finalizedAttemptsQuery = dbContext.Attempts
             .Where(x => x.Result != null && x.Status != AttemptStatuses.InProgress)
-            .AsNoTracking()
+            .AsNoTracking();
+
+        var trendBase = await finalizedAttemptsQuery
+            .OrderBy(attempt => attempt.SubmittedAtUtc ?? attempt.StartedAtUtc)
+            .Select(attempt => new
+            {
+                attempt.Id,
+                CompletedAtUtc = attempt.SubmittedAtUtc ?? attempt.StartedAtUtc,
+                attempt.Result!.ScorePercentage
+            })
             .ToListAsync(cancellationToken);
 
-        attempts = attempts
-            .OrderBy(attempt => attempt.SubmittedAtUtc ?? attempt.StartedAtUtc)
-            .ToList();
-
-        var trend = attempts
+        var trend = trendBase
             .Select((attempt, index) => new AttemptTrendPointSnapshot(
                 attempt.Id,
                 $"Tentativa {index + 1}",
-                attempt.SubmittedAtUtc ?? attempt.StartedAtUtc,
-                attempt.Result!.ScorePercentage))
+                attempt.CompletedAtUtc,
+                attempt.ScorePercentage))
             .ToArray();
 
-        var totalAttempts = attempts.Count;
-        var totalQuestions = attempts.Sum(x => x.Result!.TotalQuestions);
-        var totalCorrect = attempts.Sum(x => x.Result!.CorrectAnswers);
-        var totalIncorrect = attempts.Sum(x => x.Result!.IncorrectAnswers);
+        var summaryAggregate = await finalizedAttemptsQuery
+            .GroupBy(_ => 1)
+            .Select(group => new
+            {
+                TotalAttempts = group.Count(),
+                TotalQuestions = group.Sum(x => x.Result!.TotalQuestions),
+                TotalCorrect = group.Sum(x => x.Result!.CorrectAnswers),
+                TotalIncorrect = group.Sum(x => x.Result!.IncorrectAnswers),
+                AverageAttemptPercentage = group.Average(x => x.Result!.ScorePercentage),
+                BestAttemptPercentage = group.Max(x => x.Result!.ScorePercentage)
+            })
+            .SingleOrDefaultAsync(cancellationToken);
+
+        var totalAttempts = summaryAggregate?.TotalAttempts ?? 0;
+        var totalQuestions = summaryAggregate?.TotalQuestions ?? 0;
+        var totalCorrect = summaryAggregate?.TotalCorrect ?? 0;
+        var totalIncorrect = summaryAggregate?.TotalIncorrect ?? 0;
         var globalAccuracyRate = totalQuestions == 0
             ? 0m
             : decimal.Round((totalCorrect * 100m) / totalQuestions, 2);
-        var averageAttemptPercentage = totalAttempts == 0
+        var averageAttemptPercentage = summaryAggregate is null
             ? 0m
-            : decimal.Round(attempts.Average(x => x.Result!.ScorePercentage), 2);
+            : decimal.Round(summaryAggregate.AverageAttemptPercentage, 2);
         decimal? lastAttemptPercentage = trend.LastOrDefault()?.Percentage;
-        decimal? bestAttemptPercentage = totalAttempts == 0
+        decimal? bestAttemptPercentage = summaryAggregate is null
             ? null
-            : attempts.Max(x => x.Result!.ScorePercentage);
+            : summaryAggregate.BestAttemptPercentage;
 
-        var topicPerformance = attempts
-            .SelectMany(x => AttemptResultProjection.DeserializePersistedQuestionReviews(x.Result!.QuestionReviewsJson))
-            .GroupBy(review => string.IsNullOrWhiteSpace(review.Topic) ? "Sem tópico" : review.Topic.Trim(), StringComparer.OrdinalIgnoreCase)
+        var topicReviewPayloads = await finalizedAttemptsQuery
+            .Select(x => x.Result!.QuestionReviewsJson)
+            .ToListAsync(cancellationToken);
+
+        var topicPerformance = topicReviewPayloads
+            .SelectMany(AttemptResultProjection.DeserializePersistedQuestionReviews)
+            .GroupBy(review => NormalizeTopic(review.Topic), StringComparer.OrdinalIgnoreCase)
             .Select(group =>
             {
                 var topic = group.Key;
@@ -117,5 +138,10 @@ public sealed class AttemptReportingService(ExamRunnerDbContext dbContext) : IAt
                 bestAttemptPercentage),
             trend,
             topicPerformance);
+    }
+
+    private static string NormalizeTopic(string? topic)
+    {
+        return string.IsNullOrWhiteSpace(topic) ? "Sem tópico" : topic.Trim();
     }
 }
