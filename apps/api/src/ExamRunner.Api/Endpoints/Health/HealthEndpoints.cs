@@ -4,14 +4,14 @@ namespace ExamRunner.Api.Endpoints.Health;
 
 public static class HealthEndpoints
 {
-    public static IEndpointRouteBuilder MapHealthEndpoints(this IEndpointRouteBuilder app)
+    public static IEndpointRouteBuilder MapHealthEndpoints(this IEndpointRouteBuilder app, string endpointName = "GetHealth")
     {
         app.MapGet("/health", () =>
             TypedResults.Ok(new HealthResponse(
                 Status: "ok",
                 Timestamp: DateTimeOffset.UtcNow,
                 Version: ResolveVersion())))
-            .WithName("GetHealth")
+            .WithName(endpointName)
             .WithTags("Health")
             .WithSummary("Returns API health details")
             .Produces<HealthResponse>(StatusCodes.Status200OK)

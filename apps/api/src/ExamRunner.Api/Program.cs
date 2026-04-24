@@ -1,3 +1,4 @@
+using System.Globalization;
 using ExamRunner.Api.Endpoints.Attempts;
 using ExamRunner.Api.Endpoints.Exams;
 using ExamRunner.Api.Endpoints.Health;
@@ -9,6 +10,7 @@ using ExamRunner.Infrastructure.Extensions;
 using FluentValidation;
 
 var builder = WebApplication.CreateBuilder(args);
+ConfigureDesktopPort(builder, args);
 
 builder.Services.AddProblemDetails(options =>
 {
@@ -67,9 +69,11 @@ var api = app.MapGroup("/api")
     .WithOpenApi();
 
 api.AddEndpointFilterFactory(ValidationEndpointFilterFactory.Create);
-api.MapHealthEndpoints();
+api.MapHealthEndpoints("GetApiHealth");
 api.MapExamEndpoints();
 api.MapAttemptEndpoints();
+
+app.MapHealthEndpoints();
 
 app.Run();
 
@@ -110,6 +114,79 @@ static bool TryResolveDemoSeedCommand(string[] args, out string directoryPath)
     }
 
     directoryPath = Path.GetFullPath(args[seedArgumentIndex + 1]);
+    return true;
+}
+
+static void ConfigureDesktopPort(WebApplicationBuilder builder, string[] args)
+{
+    const string urlsEnvironmentVariable = "ASPNETCORE_URLS";
+
+    if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(urlsEnvironmentVariable)))
+    {
+        return;
+    }
+
+    if (!TryResolveConfiguredPort(args, out var port))
+    {
+        return;
+    }
+
+    builder.WebHost.UseUrls($"http://localhost:{port}");
+}
+
+static bool TryResolveConfiguredPort(string[] args, out int port)
+{
+    const string desktopPortEnvironmentVariable = "EXAM_RUNNER_API_PORT";
+    port = 0;
+
+    if (TryResolvePort(Environment.GetEnvironmentVariable(desktopPortEnvironmentVariable), out port))
+    {
+        return true;
+    }
+
+    const string portArgument = "--port";
+    var portArgumentIndex = Array.FindIndex(args, arg => string.Equals(arg, portArgument, StringComparison.OrdinalIgnoreCase));
+
+    if (portArgumentIndex < 0)
+    {
+        return false;
+    }
+
+    if (portArgumentIndex + 1 >= args.Length)
+    {
+        throw new InvalidOperationException($"Missing port value. Usage: dotnet run --project apps/api/src/ExamRunner.Api -- {portArgument} <port>");
+    }
+
+    if (!TryResolvePort(args[portArgumentIndex + 1], out port))
+    {
+        throw new InvalidOperationException("Invalid port value. Provide a number between 1 and 65535.");
+    }
+
+    return true;
+}
+
+static bool TryResolvePort(string? value, out int port)
+{
+    const int minPort = 1;
+    const int maxPort = 65_535;
+    port = 0;
+
+    if (string.IsNullOrWhiteSpace(value))
+    {
+        return false;
+    }
+
+    if (!int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var parsed))
+    {
+        return false;
+    }
+
+    if (parsed < minPort || parsed > maxPort)
+    {
+        return false;
+    }
+
+    port = parsed;
     return true;
 }
 

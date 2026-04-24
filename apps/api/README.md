@@ -16,6 +16,53 @@ Backend modular em `apps/api` com solução .NET e contrato OpenAPI como fonte p
 - Na inicialização, a API aplica migrations automaticamente (`Database.Migrate`).
 - Migrations ficam em `src/ExamRunner.Infrastructure/Data/Migrations`.
 
+## Modo desktop local (Windows)
+
+Para execução desktop local, a API permite configurar porta e caminho do SQLite sem depender da pasta de instalação.
+
+### Porta HTTP configurável
+
+Ordem de prioridade:
+
+1. `ASPNETCORE_URLS` (comportamento padrão do ASP.NET Core, mantém compatibilidade com desenvolvimento atual).
+2. `EXAM_RUNNER_API_PORT` (ex.: `5187`).
+3. argumento de linha de comando `--port <numero>`.
+
+Exemplo no PowerShell:
+
+```powershell
+$env:EXAM_RUNNER_API_PORT="5187"
+.\apps\api\publish\win-x64\ExamRunner.Api.exe
+```
+
+ou
+
+```powershell
+.\apps\api\publish\win-x64\ExamRunner.Api.exe --port 5187
+```
+
+### SQLite em diretório local do usuário
+
+Ative o modo desktop com:
+
+- variável: `Desktop__Enabled=true`
+- ou configuração equivalente em `appsettings`.
+
+Quando ativo:
+
+- por padrão o banco é criado em `%LOCALAPPDATA%\ExamRunner\Data\exam-runner.db` (Windows);
+- isso evita gravação dentro da pasta de instalação/publicação da aplicação;
+- opcionalmente, você pode sobrescrever com `Desktop__DatabasePath=<caminho-completo>`;
+- opcionalmente, você pode customizar a pasta de app com `Desktop__AppDirectoryName=<nome>`.
+
+Exemplo:
+
+```powershell
+$env:Desktop__Enabled="true"
+$env:Desktop__AppDirectoryName="ExamRunnerDesktop"
+.\apps\api\publish\win-x64\ExamRunner.Api.exe
+```
+
 ### Comandos úteis de migração
 
 Executar a partir da raiz do monorepo:
@@ -62,6 +109,8 @@ Saída esperada:
 
 ## Endpoints disponíveis
 
+- `GET /health`
+  - endpoint direto para probes locais no modo desktop.
 - `GET /api/health`
   - Retorna `status`, `timestamp` (UTC) e `version`.
 - `GET /api/exams`
