@@ -55,6 +55,9 @@ Quando ativo:
 - opcionalmente, você pode sobrescrever com `Desktop__DatabasePath=<caminho-completo>`;
 - opcionalmente, você pode customizar a pasta de app com `Desktop__AppDirectoryName=<nome>`.
 
+No app desktop Electron deste monorepo, o sidecar sobe com `Desktop__Enabled=true` e `Desktop__DatabasePath` apontando para `%APPDATA%\ExamRunner\data\exam-runner.db`.
+Esse caminho vem do processo do Electron (AppData do usuário) para manter dados fora da pasta instalada e preservar persistência após reinstalação.
+
 Exemplo:
 
 ```powershell

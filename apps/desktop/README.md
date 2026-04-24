@@ -42,3 +42,18 @@ pnpm --filter @exam-runner/desktop dev
 pnpm --filter @exam-runner/desktop package
 pnpm --filter @exam-runner/desktop make
 ```
+
+
+## Persistência local no Windows (AppData)
+
+Ao iniciar o backend sidecar, o Electron sempre resolve um diretório de dados no AppData do usuário:
+
+- raiz de dados: `%APPDATA%\ExamRunner`
+- SQLite: `%APPDATA%\ExamRunner\data\exam-runner.db`
+- logs auxiliares do sidecar: `%APPDATA%\ExamRunner\logs\backend-sidecar.log`
+
+Com isso:
+
+- a aplicação não grava banco/arquivos em `Program Files` nem na pasta de instalação;
+- reinstalações não removem os dados locais por padrão, pois eles ficam fora do diretório do app;
+- o backend .NET recebe esse caminho no boot via `Desktop__Enabled=true` e `Desktop__DatabasePath=<caminho-resolvido-no-AppData>`.

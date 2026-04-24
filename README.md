@@ -159,6 +159,8 @@ pnpm make:desktop
 
 Os scripts acima usam o workspace `@exam-runner/desktop` (`apps/desktop`) e mantêm as dependências do app desktop isoladas no próprio pacote.
 
+No Windows, o app desktop salva dados locais em AppData do usuário (ex.: `%APPDATA%\ExamRunner\data\exam-runner.db`) e evita gravação em `Program Files`/diretório de instalação.
+
 ## Como importar provas
 
 A API expõe `POST /api/exams/import` para importar JSON de prova.
