@@ -33,6 +33,31 @@ Para o pacote final instalado, o Electron Forge copia como `extraResource`:
 
 O comando raiz `desktop:artifacts:prepare` garante os dois artefatos antes de `desktop:package` e `desktop:make`.
 
+## Instalador Windows em um único comando
+
+Pipeline completo a partir da raiz do monorepo:
+
+```bash
+pnpm desktop:installer:win
+```
+
+Esse comando chama `scripts/build-desktop-installer-win.sh` e executa:
+
+1. build do `apps/web` em modo desktop;
+2. cópia dos arquivos estáticos para `apps/desktop/web-dist`;
+3. `dotnet publish` da API em `apps/api/publish/win-x64`;
+4. `electron-forge make --platform win32 --arch x64`.
+
+Pré-requisitos:
+
+- `pnpm`;
+- `.NET 8 SDK`;
+- ambiente com toolchain para gerar instalador Windows.
+
+Saída final previsível:
+
+- `dist/desktop/windows/ExamRunnerDesktop-<versão>-win-x64-setup.exe`
+
 ## Comandos locais (a partir da raiz)
 
 ```bash
