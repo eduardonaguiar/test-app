@@ -37,6 +37,9 @@
     "db:seed:example": "bash ./scripts/seed-example-exam.sh",
     "desktop:dev": "pnpm --filter @exam-runner/desktop dev",
     "desktop:package": "pnpm --filter @exam-runner/desktop package",
-    "desktop:make": "pnpm --filter @exam-runner/desktop make"
+    "desktop:make": "pnpm --filter @exam-runner/desktop make",
+    "dev:desktop": "pnpm --filter @exam-runner/desktop dev",
+    "build:desktop": "pnpm --filter @exam-runner/desktop package",
+    "make:desktop": "pnpm --filter @exam-runner/desktop make"
   }
 }
