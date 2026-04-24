@@ -13,7 +13,8 @@ const WEB_DEV_SERVER_CANDIDATES = [
 
 const API_DEFAULT_PORT = 8080;
 const API_HOST = '127.0.0.1';
-const API_LOG_FILE_NAME = 'backend-sidecar.log';
+const MAIN_LOG_FILE_PREFIX = 'electron-main';
+const API_LOG_FILE_PREFIX = 'backend-sidecar';
 const DESKTOP_APP_DATA_DIRECTORY = 'ExamRunner';
 const DESKTOP_DATA_SUBDIRECTORY = 'data';
 const BACKEND_HEALTH_TIMEOUT_MS = 30_000;
@@ -23,7 +24,9 @@ declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string;
 
 let backendProcess: ChildProcess | null = null;
 let backendLogStream: WriteStream | null = null;
+let mainLogStream: WriteStream | null = null;
 let isBackendShutdownInProgress = false;
+const logSessionId = new Date().toISOString().replaceAll(':', '-');
 
 const safeHtml = (value: string): string =>
   value
@@ -176,14 +179,27 @@ const ensureDesktopStorageDirectories = (): DesktopStoragePaths => {
 
 const openBackendLogStream = (): WriteStream => {
   const storagePaths = ensureDesktopStorageDirectories();
-  const logFilePath = path.join(storagePaths.logsDirectory, API_LOG_FILE_NAME);
+  const logFilePath = path.join(storagePaths.logsDirectory, `${API_LOG_FILE_PREFIX}-${logSessionId}.log`);
   return createWriteStream(logFilePath, { flags: 'a' });
+};
+
+const openMainLogStream = (): WriteStream => {
+  const storagePaths = ensureDesktopStorageDirectories();
+  const logFilePath = path.join(storagePaths.logsDirectory, `${MAIN_LOG_FILE_PREFIX}-${logSessionId}.log`);
+  return createWriteStream(logFilePath, { flags: 'a' });
+};
+
+const writeMainLog = (message: string): void => {
+  const line = `[${new Date().toISOString()}] ${message}`;
+  console.log(line);
+  mainLogStream?.write(`${line}\n`);
 };
 
 const writeBackendLog = (message: string): void => {
   const line = `[${new Date().toISOString()}] ${message}`;
   console.log(line);
   backendLogStream?.write(`${line}\n`);
+  mainLogStream?.write(`${line} [backend]\n`);
 };
 
 const startBackendProcess = async (): Promise<void> => {
@@ -200,6 +216,7 @@ const startBackendProcess = async (): Promise<void> => {
   }
 
   const storagePaths = ensureDesktopStorageDirectories();
+  writeMainLog(`Diretório de logs: ${storagePaths.logsDirectory}`);
   const launchTarget = resolveBackendLaunchTarget(backendPort);
   backendLogStream = openBackendLogStream();
   writeBackendLog(`Iniciando backend sidecar em http://${API_HOST}:${backendPort}`);
@@ -285,7 +302,8 @@ const loadBackendStartupError = async (mainWindow: BrowserWindow, details: strin
       <p>Verifique se não há outra aplicação ocupando a porta configurada e tente abrir o app novamente.</p>
       <p>Detalhes técnicos:</p>
       <pre style="padding: 1rem; background: #f5f5f5; border: 1px solid #ddd; border-radius: 8px; white-space: pre-wrap;">${safeHtml(details)}</pre>
-      <p>Arquivo de log: <code>${safeHtml(path.join(resolveDesktopStoragePaths().logsDirectory, API_LOG_FILE_NAME))}</code></p>
+      <p>Arquivo de log principal: <code>${safeHtml(path.join(resolveDesktopStoragePaths().logsDirectory, `${MAIN_LOG_FILE_PREFIX}-${logSessionId}.log`))}</code></p>
+      <p>Arquivo de log do backend: <code>${safeHtml(path.join(resolveDesktopStoragePaths().logsDirectory, `${API_LOG_FILE_PREFIX}-${logSessionId}.log`))}</code></p>
     </main>
   `;
 
@@ -353,6 +371,7 @@ const loadRenderer = async (mainWindow: BrowserWindow): Promise<void> => {
 };
 
 const createWindow = async (): Promise<void> => {
+  writeMainLog('Criando janela principal do desktop.');
   const mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -366,25 +385,32 @@ const createWindow = async (): Promise<void> => {
   try {
     await waitForBackendHealth();
     await loadRenderer(mainWindow);
+    writeMainLog('UI carregada com sucesso.');
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     writeBackendLog(`Falha ao aguardar healthcheck do backend: ${message}`);
+    writeMainLog(`Falha ao inicializar renderer: ${message}`);
     await loadBackendStartupError(mainWindow, message);
   }
 };
 
 app.whenReady().then(() => {
+  const storagePaths = ensureDesktopStorageDirectories();
+  mainLogStream = openMainLogStream();
+  writeMainLog(`Electron pronto. Logs em ${storagePaths.logsDirectory}`);
   startBackendProcess()
     .then(() => createWindow())
     .catch((error: unknown) => {
-      console.error('Falha ao iniciar desktop com backend sidecar', error);
+      const message = error instanceof Error ? error.stack ?? error.message : String(error);
+      writeMainLog(`Falha ao iniciar desktop com backend sidecar: ${message}`);
       void createWindow();
     });
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow().catch((error: unknown) => {
-        console.error('Falha ao recriar janela principal', error);
+        const message = error instanceof Error ? error.stack ?? error.message : String(error);
+        writeMainLog(`Falha ao recriar janela principal: ${message}`);
       });
     }
   });
@@ -399,6 +425,9 @@ app.on('before-quit', (event) => {
   event.preventDefault();
 
   void stopBackendProcess().finally(() => {
+    writeMainLog('Encerrando aplicativo desktop.');
+    mainLogStream?.end();
+    mainLogStream = null;
     app.quit();
   });
 });
@@ -407,4 +436,12 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
+});
+
+process.on('uncaughtException', (error) => {
+  writeMainLog(`uncaughtException: ${error.stack ?? error.message}`);
+});
+
+process.on('unhandledRejection', (reason) => {
+  writeMainLog(`unhandledRejection: ${String(reason)}`);
 });

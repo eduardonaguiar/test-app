@@ -50,10 +50,23 @@ Ao iniciar o backend sidecar, o Electron sempre resolve um diretório de dados n
 
 - raiz de dados: `%APPDATA%\ExamRunner`
 - SQLite: `%APPDATA%\ExamRunner\data\exam-runner.db`
-- logs auxiliares do sidecar: `%APPDATA%\ExamRunner\logs\backend-sidecar.log`
+- logs: `%APPDATA%\ExamRunner\logs\`
+  - main process: `electron-main-<ISO_TIMESTAMP>.log`
+  - backend sidecar: `backend-sidecar-<ISO_TIMESTAMP>.log`
 
 Com isso:
 
 - a aplicação não grava banco/arquivos em `Program Files` nem na pasta de instalação;
 - reinstalações não removem os dados locais por padrão, pois eles ficam fora do diretório do app;
 - o backend .NET recebe esse caminho no boot via `Desktop__Enabled=true` e `Desktop__DatabasePath=<caminho-resolvido-no-AppData>`.
+- erros de inicialização do backend ficam registrados no log de backend da execução atual.
+
+## Como localizar os logs (usuário/desenvolvedor)
+
+O diretório de logs é sempre resolvido pelo `app.getPath('appData')` do Electron:
+
+- Windows: `%APPDATA%\ExamRunner\logs\`
+- Linux: `~/.config/ExamRunner/logs/`
+- macOS: `~/Library/Application Support/ExamRunner/logs/`
+
+Ao abrir o app, um novo par de arquivos é criado (main + backend), facilitando rastrear cada execução separadamente.
