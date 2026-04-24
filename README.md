@@ -155,7 +155,25 @@ Comandos básicos do desktop a partir da raiz do monorepo:
 pnpm dev:desktop
 pnpm build:desktop
 pnpm make:desktop
+pnpm desktop:installer:win
 ```
+
+O comando `pnpm desktop:installer:win` executa o pipeline completo para gerar o instalador Windows em uma única chamada:
+
+1. build do frontend React (modo desktop);
+2. publish do backend .NET em `win-x64`;
+3. organização dos artefatos para o empacotamento Electron;
+4. `electron-forge make` para gerar o instalador.
+
+Pré-requisitos para esse pipeline:
+
+- Node.js + pnpm instalados;
+- .NET 8 SDK instalado;
+- toolchain de build para Windows disponível no ambiente que executa o comando.
+
+Saída previsível do instalador:
+
+- `dist/desktop/windows/ExamRunnerDesktop-<versão>-win-x64-setup.exe`
 
 Os scripts acima usam o workspace `@exam-runner/desktop` (`apps/desktop`) e mantêm as dependências do app desktop isoladas no próprio pacote.
 
