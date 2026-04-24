@@ -9,8 +9,11 @@ using ExamRunner.Application.Attempts;
 using ExamRunner.Infrastructure.Extensions;
 using FluentValidation;
 
+const string LocalCorsPolicyName = "LocalClientPolicy";
+
 var builder = WebApplication.CreateBuilder(args);
 ConfigureDesktopPort(builder, args);
+ConfigureCors(builder);
 
 builder.Services.AddProblemDetails(options =>
 {
@@ -55,6 +58,7 @@ if (TryResolveSeedCommand(args, out var seedFilePath))
 }
 
 app.UseExceptionHandler();
+app.UseCors(LocalCorsPolicyName);
 
 if (app.Environment.IsDevelopment())
 {
@@ -188,6 +192,67 @@ static bool TryResolvePort(string? value, out int port)
 
     port = parsed;
     return true;
+}
+
+static void ConfigureCors(WebApplicationBuilder builder)
+{
+    var configuredWebOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
+    var webOrigins = configuredWebOrigins
+        .Where(origin => !string.IsNullOrWhiteSpace(origin))
+        .Select(origin => origin.Trim())
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToArray();
+
+    var desktopOrigins = GetDesktopOrigins(builder.Configuration);
+    var isDesktopModeEnabled = builder.Configuration.GetValue<bool>("Desktop:Enabled");
+    var allowNullOriginInDesktop = builder.Configuration.GetValue<bool>("Desktop:Cors:AllowNullOrigin");
+
+    builder.Services.AddCors(options =>
+    {
+        options.AddPolicy(LocalCorsPolicyName, policy =>
+        {
+            policy
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .SetIsOriginAllowed(origin => IsAllowedLocalOrigin(origin, webOrigins, desktopOrigins, isDesktopModeEnabled, allowNullOriginInDesktop));
+        });
+    });
+}
+
+static string[] GetDesktopOrigins(IConfiguration configuration)
+{
+    var configuredDesktopOrigins = configuration.GetSection("Desktop:Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
+
+    return configuredDesktopOrigins
+        .Where(origin => !string.IsNullOrWhiteSpace(origin))
+        .Select(origin => origin.Trim())
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToArray();
+}
+
+static bool IsAllowedLocalOrigin(
+    string origin,
+    IReadOnlyCollection<string> webOrigins,
+    IReadOnlyCollection<string> desktopOrigins,
+    bool isDesktopModeEnabled,
+    bool allowNullOriginInDesktop)
+{
+    if (webOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase))
+    {
+        return true;
+    }
+
+    if (!isDesktopModeEnabled)
+    {
+        return false;
+    }
+
+    if (desktopOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase))
+    {
+        return true;
+    }
+
+    return allowNullOriginInDesktop && string.Equals(origin, "null", StringComparison.Ordinal);
 }
 
 public partial class Program;
