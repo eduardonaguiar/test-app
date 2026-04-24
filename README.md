@@ -156,6 +156,7 @@ pnpm dev:desktop
 pnpm build:desktop
 pnpm make:desktop
 pnpm desktop:installer:win
+pnpm desktop:smoke
 ```
 
 O comando `pnpm desktop:installer:win` executa o pipeline completo para gerar o instalador Windows em uma única chamada:
@@ -174,6 +175,24 @@ Pré-requisitos para esse pipeline:
 Saída previsível do instalador:
 
 - `dist/desktop/windows/ExamRunnerDesktop-<versão>-win-x64-setup.exe`
+
+Validação rápida pós-build (antes de distribuir):
+
+```bash
+pnpm desktop:smoke
+```
+
+Esse smoke test falha com mensagens claras quando algum artefato essencial está ausente:
+
+- instalador Windows;
+- backend sidecar publicado (`apps/api/publish/win-x64/ExamRunner.Api.exe`);
+- build React empacotado para o desktop (`apps/desktop/web-dist`).
+
+Opcionalmente, também é possível validar `/health` do backend publicado:
+
+```bash
+bash scripts/smoke-test-desktop-artifacts.sh --health-check
+```
 
 Os scripts acima usam o workspace `@exam-runner/desktop` (`apps/desktop`) e mantêm as dependências do app desktop isoladas no próprio pacote.
 
