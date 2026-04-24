@@ -2,9 +2,9 @@ export {};
 
 declare global {
   interface Window {
-    desktopInfo: {
-      platform: string;
-      versions: NodeJS.ProcessVersions;
+    desktopRuntimeConfig: {
+      apiBaseUrl: string;
+      isDesktop: true;
     };
   }
 }
