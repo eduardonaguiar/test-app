@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { HomePage } from '../HomePage';
+import { ToastProvider } from '../../hooks/ToastProvider';
 import { listExams } from '../../generated/api-contract';
 
 vi.mock('../../generated/api-contract', async () => {
@@ -64,9 +65,11 @@ describe('HomePage', () => {
     const user = userEvent.setup();
 
     render(
-      <MemoryRouter>
-        <HomePage />
-      </MemoryRouter>,
+      <ToastProvider>
+        <MemoryRouter>
+          <HomePage />
+        </MemoryRouter>
+      </ToastProvider>,
     );
 
     expect(await screen.findByText('Simulado AWS')).toBeInTheDocument();

@@ -200,6 +200,7 @@ pnpm test
 
 ```bash
 pnpm test:js
+pnpm test:js:a11y
 pnpm test:api
 pnpm --filter @exam-runner/web test
 ```
@@ -208,6 +209,7 @@ pnpm --filter @exam-runner/web test
 
 ```bash
 pnpm lint
+pnpm lint:js:a11y
 pnpm typecheck
 ```
 

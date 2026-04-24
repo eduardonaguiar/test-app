@@ -53,3 +53,16 @@ Validar sempre:
 - [ ] Modal/dialog está com foco controlado e `Esc` funcional?
 - [ ] Não há estados comunicados apenas por cor?
 - [ ] Fluxo crítico da tela funciona integralmente por teclado?
+
+
+## 7) Automação obrigatória (lint + smoke tests)
+
+Além da checklist manual, o repositório executa validações automatizadas para evitar regressões básicas:
+
+- `pnpm lint:js:a11y`: aplica regras de lint focadas em semântica (ex.: bloqueia `onClick` em `div`/`span`).
+- `pnpm test:js:a11y`: executa smoke tests de acessibilidade em páginas core (`HomePage` e `ExamDetailsPage`) cobrindo:
+  - headings/landmarks por role;
+  - labels acessíveis em filtros principais;
+  - fluxo de início de tentativa apenas com teclado.
+
+Esses comandos também são encadeados em `pnpm lint` e `pnpm test` no root.
