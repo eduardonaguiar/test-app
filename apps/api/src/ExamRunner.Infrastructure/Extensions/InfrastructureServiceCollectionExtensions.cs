@@ -46,6 +46,13 @@ public static class InfrastructureServiceCollectionExtensions
 
     private static string BuildConnectionString(IConfiguration configuration, IHostEnvironment environment)
     {
+        if (IsDesktopModeEnabled(configuration))
+        {
+            var desktopConnectionString = BuildDesktopConnectionString(configuration);
+            EnsureSqliteDirectoryExists(desktopConnectionString, environment.ContentRootPath);
+            return desktopConnectionString;
+        }
+
         var configured = configuration.GetConnectionString("ExamRunnerDb");
 
         if (!string.IsNullOrWhiteSpace(configured))
@@ -59,6 +66,36 @@ public static class InfrastructureServiceCollectionExtensions
 
         var dbPath = Path.Combine(dbDirectory, "exam-runner.db");
 
+        return $"Data Source={dbPath}";
+    }
+
+    private static bool IsDesktopModeEnabled(IConfiguration configuration)
+    {
+        return configuration.GetValue<bool>("Desktop:Enabled");
+    }
+
+    private static string BuildDesktopConnectionString(IConfiguration configuration)
+    {
+        var configuredPath = configuration["Desktop:DatabasePath"];
+        if (!string.IsNullOrWhiteSpace(configuredPath))
+        {
+            return $"Data Source={configuredPath}";
+        }
+
+        var appDirectory = configuration["Desktop:AppDirectoryName"];
+        if (string.IsNullOrWhiteSpace(appDirectory))
+        {
+            appDirectory = "ExamRunner";
+        }
+
+        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        if (string.IsNullOrWhiteSpace(localAppData))
+        {
+            localAppData = AppContext.BaseDirectory;
+        }
+
+        var dbDirectory = Path.Combine(localAppData, appDirectory, "Data");
+        var dbPath = Path.Combine(dbDirectory, "exam-runner.db");
         return $"Data Source={dbPath}";
     }
 
