@@ -180,6 +180,7 @@ pnpm test
 ```bash
 pnpm test:js
 pnpm test:api
+pnpm --filter @exam-runner/web test
 ```
 
 ### Outros checks úteis
