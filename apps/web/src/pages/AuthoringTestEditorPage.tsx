@@ -168,20 +168,26 @@ export function AuthoringTestEditorPage() {
   }
 
   function handlePreview() {
-    navigate(`/authoring/tests/${draft.examId}/preview`, {
+    const currentDraft = draft;
+    if (!currentDraft) {
+      return;
+    }
+
+    navigate(`/authoring/tests/${currentDraft.examId}/preview`, {
       state: {
-        draft,
+        draft: currentDraft,
       },
     });
   }
 
   function handleExportJson() {
-    if (!editorialValidation) {
+    const currentDraft = draft;
+    if (!editorialValidation || !currentDraft) {
       return;
     }
 
     try {
-      const fileName = exportExamToJsonFile(draft, editorialValidation);
+      const fileName = exportExamToJsonFile(currentDraft, editorialValidation);
       toast.success({
         title: 'JSON exportado com sucesso',
         description: `Arquivo ${fileName} gerado com o schema oficial atual.`,

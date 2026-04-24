@@ -219,3 +219,6 @@ storybook-static/
 # ------------------------------
 *.pid
 *.seed
+
+# Desktop generated web bundle
+apps/desktop/web-dist/

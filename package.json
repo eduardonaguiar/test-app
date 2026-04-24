@@ -36,10 +36,12 @@
     "format:check:api": "dotnet format apps/api/ExamRunner.sln --verify-no-changes",
     "db:seed:example": "bash ./scripts/seed-example-exam.sh",
     "desktop:dev": "pnpm --filter @exam-runner/desktop dev",
-    "desktop:package": "pnpm --filter @exam-runner/desktop package",
-    "desktop:make": "pnpm --filter @exam-runner/desktop make",
+    "desktop:package": "pnpm run desktop:web:prepare && pnpm --filter @exam-runner/desktop package",
+    "desktop:make": "pnpm run desktop:web:prepare && pnpm --filter @exam-runner/desktop make",
     "dev:desktop": "pnpm --filter @exam-runner/desktop dev",
-    "build:desktop": "pnpm --filter @exam-runner/desktop package",
-    "make:desktop": "pnpm --filter @exam-runner/desktop make"
+    "build:desktop": "pnpm run desktop:package",
+    "make:desktop": "pnpm run desktop:make",
+    "build:web": "pnpm --filter @exam-runner/web build",
+    "desktop:web:prepare": "pnpm --filter @exam-runner/web build --mode desktop && node ./scripts/prepare-desktop-web.mjs"
   }
 }

@@ -1,4 +1,5 @@
 import { app, BrowserWindow } from 'electron';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 
 const createWindow = (): void => {
@@ -15,6 +16,13 @@ const createWindow = (): void => {
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
     mainWindow.webContents.openDevTools({ mode: 'detach' });
+    return;
+  }
+
+  const packagedWebIndexPath = path.join(app.getAppPath(), 'web-dist', 'index.html');
+
+  if (existsSync(packagedWebIndexPath)) {
+    mainWindow.loadFile(packagedWebIndexPath);
     return;
   }
 
