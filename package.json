@@ -34,6 +34,9 @@
     "format:check:js": "pnpm --filter @exam-runner/web format:check",
     "format:api": "dotnet format apps/api/ExamRunner.sln",
     "format:check:api": "dotnet format apps/api/ExamRunner.sln --verify-no-changes",
-    "db:seed:example": "bash ./scripts/seed-example-exam.sh"
+    "db:seed:example": "bash ./scripts/seed-example-exam.sh",
+    "desktop:dev": "pnpm --filter @exam-runner/desktop dev",
+    "desktop:package": "pnpm --filter @exam-runner/desktop package",
+    "desktop:make": "pnpm --filter @exam-runner/desktop make"
   }
 }
