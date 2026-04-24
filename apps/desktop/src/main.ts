@@ -14,6 +14,8 @@ const WEB_DEV_SERVER_CANDIDATES = [
 const API_DEFAULT_PORT = 8080;
 const API_HOST = '127.0.0.1';
 const API_LOG_FILE_NAME = 'backend-sidecar.log';
+const BACKEND_HEALTH_TIMEOUT_MS = 30_000;
+const BACKEND_HEALTH_RETRY_INTERVAL_MS = 750;
 
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string;
 
@@ -45,6 +47,11 @@ const canConnectToUrl = async (rawUrl: string): Promise<boolean> => {
     return false;
   }
 };
+
+const sleep = async (durationMs: number): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(resolve, durationMs);
+  });
 
 const resolveBackendPort = (): number => {
   const parsed = Number(process.env.EXAM_RUNNER_API_PORT);
@@ -236,6 +243,54 @@ const loadMissingWebBuildError = async (mainWindow: BrowserWindow, expectedPath:
   await mainWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(message)}`);
 };
 
+const loadBackendStartupError = async (mainWindow: BrowserWindow, details: string): Promise<void> => {
+  const message = `
+    <main style="font-family: Arial, sans-serif; margin: 2rem; max-width: 56rem; line-height: 1.6;">
+      <h1>Não foi possível iniciar o backend local</h1>
+      <p>O aplicativo não conseguiu confirmar o endpoint <code>/health</code> do backend no tempo esperado.</p>
+      <p>Verifique se não há outra aplicação ocupando a porta configurada e tente abrir o app novamente.</p>
+      <p>Detalhes técnicos:</p>
+      <pre style="padding: 1rem; background: #f5f5f5; border: 1px solid #ddd; border-radius: 8px; white-space: pre-wrap;">${safeHtml(details)}</pre>
+      <p>Arquivo de log: <code>${safeHtml(path.join(app.getPath('logs'), 'ExamRunnerDesktop', API_LOG_FILE_NAME))}</code></p>
+    </main>
+  `;
+
+  await mainWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(message)}`);
+};
+
+const waitForBackendHealth = async (): Promise<void> => {
+  const backendPort = resolveBackendPort();
+  const healthUrl = `http://${API_HOST}:${backendPort}/health`;
+  const deadline = Date.now() + BACKEND_HEALTH_TIMEOUT_MS;
+  let lastFailureReason = 'Aguardando backend responder.';
+
+  while (Date.now() < deadline) {
+    if (!backendProcess) {
+      throw new Error('Processo do backend não está em execução.');
+    }
+
+    try {
+      const response = await fetch(healthUrl, { method: 'GET' });
+
+      if (response.ok) {
+        writeBackendLog(`Healthcheck confirmado em ${healthUrl}.`);
+        return;
+      }
+
+      lastFailureReason = `Healthcheck retornou status ${response.status}.`;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      lastFailureReason = `Falha de conexão com /health: ${message}`;
+    }
+
+    await sleep(BACKEND_HEALTH_RETRY_INTERVAL_MS);
+  }
+
+  throw new Error(
+    `Timeout de ${BACKEND_HEALTH_TIMEOUT_MS}ms ao consultar ${healthUrl}. Último erro: ${lastFailureReason}`,
+  );
+};
+
 const loadRenderer = async (mainWindow: BrowserWindow): Promise<void> => {
   if (!app.isPackaged) {
     for (const candidateUrl of WEB_DEV_SERVER_CANDIDATES) {
@@ -274,7 +329,14 @@ const createWindow = async (): Promise<void> => {
     },
   });
 
-  await loadRenderer(mainWindow);
+  try {
+    await waitForBackendHealth();
+    await loadRenderer(mainWindow);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    writeBackendLog(`Falha ao aguardar healthcheck do backend: ${message}`);
+    await loadBackendStartupError(mainWindow, message);
+  }
 };
 
 app.whenReady().then(() => {
@@ -282,7 +344,7 @@ app.whenReady().then(() => {
     .then(() => createWindow())
     .catch((error: unknown) => {
       console.error('Falha ao iniciar desktop com backend sidecar', error);
-      void stopBackendProcess().finally(() => app.quit());
+      void createWindow();
     });
 
   app.on('activate', () => {
