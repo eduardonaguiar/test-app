@@ -101,10 +101,14 @@ O **Exam Runner** é um simulador de exames pensado para uso local (single devel
 
 ### 2) Instalar dependências
 
+Gerenciador JS/TS oficial deste monorepo: **pnpm**.
+
 ```bash
 pnpm install
 dotnet restore apps/api/ExamRunner.sln
 ```
+
+> `npm install` e `yarn install` podem ser executados no ambiente, mas o fluxo suportado do repositório é com `pnpm` (definido em `packageManager` no `package.json` raiz).
 
 ### 3) Subir ambiente com Docker Compose
 
@@ -142,6 +146,18 @@ ou:
 ```bash
 pnpm compose:down
 ```
+
+## Desktop app (Electron)
+
+Comandos básicos do desktop a partir da raiz do monorepo:
+
+```bash
+pnpm dev:desktop
+pnpm build:desktop
+pnpm make:desktop
+```
+
+Os scripts acima usam o workspace `@exam-runner/desktop` (`apps/desktop`) e mantêm as dependências do app desktop isoladas no próprio pacote.
 
 ## Como importar provas
 
