@@ -19,7 +19,7 @@
     "build:api": "dotnet build apps/api/ExamRunner.sln",
     "lint:js": "pnpm -r --if-present lint",
     "lint:api": "dotnet format apps/api/ExamRunner.sln --verify-no-changes",
-    "test:js": "pnpm -r --if-present test",
+    "test:js": "pnpm -r test",
     "test:api": "dotnet test apps/api/ExamRunner.sln",
     "typecheck:js": "pnpm -r --if-present typecheck",
     "typecheck:api": "dotnet build apps/api/ExamRunner.sln --no-restore",
