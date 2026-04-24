@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, session, shell } from 'electron';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createWriteStream, existsSync, mkdirSync } from 'node:fs';
 import type { WriteStream } from 'node:fs';
@@ -23,6 +23,7 @@ const REQUIRED_PACKAGED_RESOURCE_DIRECTORIES = {
   backendPublish: 'win-x64',
   webBuild: 'web-dist',
 } as const;
+const WEB_ALLOWED_PROTOCOLS = new Set(['http:', 'https:', 'file:', 'data:']);
 
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string;
 
@@ -40,6 +41,37 @@ const safeHtml = (value: string): string =>
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
+
+const tryParseUrl = (rawUrl: string): URL | null => {
+  try {
+    return new URL(rawUrl);
+  } catch {
+    return null;
+  }
+};
+
+const isAllowedTopLevelNavigation = (rawUrl: string): boolean => {
+  const parsedUrl = tryParseUrl(rawUrl);
+
+  if (!parsedUrl || !WEB_ALLOWED_PROTOCOLS.has(parsedUrl.protocol)) {
+    return false;
+  }
+
+  if (parsedUrl.protocol === 'file:' || parsedUrl.protocol === 'data:') {
+    return true;
+  }
+
+  if (parsedUrl.hostname === '127.0.0.1' || parsedUrl.hostname === 'localhost') {
+    return true;
+  }
+
+  return false;
+};
+
+const isSafeExternalUrl = (rawUrl: string): boolean => {
+  const parsedUrl = tryParseUrl(rawUrl);
+  return parsedUrl !== null && (parsedUrl.protocol === 'https:' || parsedUrl.protocol === 'http:');
+};
 
 const canConnectToUrl = async (rawUrl: string): Promise<boolean> => {
   try {
@@ -430,6 +462,7 @@ const loadRenderer = async (mainWindow: BrowserWindow): Promise<void> => {
 
 const createWindow = async (): Promise<void> => {
   writeMainLog('Criando janela principal do desktop.');
+  const backendPort = resolveBackendPort();
   const mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -437,7 +470,26 @@ const createWindow = async (): Promise<void> => {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: true,
+      additionalArguments: [`--exam-runner-api-port=${backendPort}`],
     },
+  });
+
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (!isAllowedTopLevelNavigation(url)) {
+      event.preventDefault();
+      writeMainLog(`Navegação bloqueada para URL não permitida: ${url}`);
+    }
+  });
+
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (isSafeExternalUrl(url)) {
+      void shell.openExternal(url);
+    } else {
+      writeMainLog(`window.open bloqueado para URL insegura: ${url}`);
+    }
+
+    return { action: 'deny' };
   });
 
   if (startupValidationError) {
@@ -459,6 +511,12 @@ const createWindow = async (): Promise<void> => {
 };
 
 app.whenReady().then(() => {
+  session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => {
+    callback(false);
+  });
+
+  session.defaultSession.setPermissionCheckHandler(() => false);
+
   const storagePaths = ensureDesktopStorageDirectories();
   mainLogStream = openMainLogStream();
   writeMainLog(`Electron pronto. Logs em ${storagePaths.logsDirectory}`);

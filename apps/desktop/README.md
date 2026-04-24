@@ -18,6 +18,24 @@ O `main` do Electron sempre prioriza a UI React de `apps/web`:
 
 A configuração de segurança do renderer permanece com `contextIsolation: true`, preload dedicado e `nodeIntegration: false`.
 
+## Hardening básico de segurança (Electron)
+
+Decisões aplicadas no processo principal/preload:
+
+- `contextIsolation: true` e `nodeIntegration: false` no `BrowserWindow`;
+- `sandbox: true` habilitado no renderer;
+- preload mínimo via `contextBridge`, expondo apenas `window.desktopRuntimeConfig` (`apiBaseUrl` + `isDesktop`);
+- porta da API enviada para o preload por `additionalArguments` (evitando leitura direta de variáveis de ambiente no renderer);
+- bloqueio de navegação inesperada com `will-navigate` (somente `file:`, `data:` e localhost no fluxo previsto);
+- `window.open` sempre negado no renderer, com abertura externa explícita somente para `http/https` via `shell.openExternal`;
+- permissões do Chromium negadas por padrão (`setPermissionRequestHandler` e `setPermissionCheckHandler`);
+- sem exposição de APIs de filesystem ao renderer.
+
+Resultado esperado:
+
+- renderer sem acesso direto a Node.js;
+- superfície de API do preload reduzida ao mínimo necessário para integração com o backend local.
+
 ## Fluxo de build para produção
 
 No empacotamento, o desktop usa o bundle estático gerado pelo `apps/web`.
