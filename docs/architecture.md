@@ -61,6 +61,20 @@ A direção arquitetural alvo inclui `Application` e `Domain`. No estado atual, 
 
 A importação e parte das regras de negócio ainda permanecem em `ExamRunner.Infrastructure`, como etapa intermediária planejada para manter o sistema estável durante a migração por fatias.
 
+## 3.1) Estado atual vs estado alvo por milestone
+
+### Milestone atual (MVP as-built)
+
+- estrutura em camadas já existe no monorepo (`Api`, `Application`, `Domain`, `Infrastructure`);
+- `Application` e `Domain` já atendem parte do ciclo de tentativa;
+- importação de exames e trechos de orquestração ainda residem em `Infrastructure`.
+
+### Milestones seguintes (alvo)
+
+- ampliar a cobertura de casos de uso em `Application`;
+- concentrar regras puras de domínio em `Domain`;
+- manter `Infrastructure` restrita a persistência/adapters e implementação técnica.
+
 ---
 
 ## 4) Backend: responsabilidades por módulo
@@ -169,10 +183,15 @@ A integração com backend usa contratos gerados a partir de OpenAPI (`apps/web/
 
 ## 8) Ambiente local e operação
 
-- `docker-compose.yml` sobe `web` (Vite) e `api` (ASP.NET Core com `dotnet watch`);
+- `docker-compose.yml` sobe `web` (Vite) e `api` (ASP.NET Core com `dotnet run`);
 - código é montado por bind mount para feedback rápido;
 - SQLite local é inicializado por migrations no startup da API;
 - há seed automático inicial e script dedicado para seed de exemplo.
+
+Padrão adotado para evitar drift operacional:
+
+- **Compose**: `dotnet run` (default estável para onboarding/reprodutibilidade);
+- **desenvolvimento sem Compose**: `dotnet watch` via `pnpm api:dev` ou `pnpm dev`.
 
 ---
 
